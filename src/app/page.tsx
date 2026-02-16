@@ -2,6 +2,8 @@ import Link from "next/link";
 import { getDb, schema } from "@/lib/db";
 import { desc } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 interface Report {
   id: string;
   title: string;
