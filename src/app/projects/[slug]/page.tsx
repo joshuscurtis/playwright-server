@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getDb, schema } from "@/lib/db";
+import { desc, eq } from "drizzle-orm";
 
 interface Report {
   id: string;
@@ -9,24 +11,46 @@ interface Report {
   failed: number;
   skipped: number;
   durationMs: number;
-  branch?: string;
-  commitSha?: string;
-  createdAt: string;
+  branch: string | null;
+  commitSha: string | null;
+  createdAt: Date;
   url: string;
 }
 
 async function getProjectReports(slug: string): Promise<{ reports: Report[]; projectName: string }> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    const res = await fetch(`${baseUrl}/api/reports?project=${slug}&limit=100`, {
-      cache: "no-store",
+    const db = getDb();
+    const project = await db.query.projects.findFirst({
+      where: eq(schema.projects.slug, slug),
     });
-    if (!res.ok) return { reports: [], projectName: slug };
-    const data = await res.json();
-    const reports = data.reports || [];
-    const projectName = reports[0]?.project?.name || slug;
-    return { reports, projectName };
-  } catch {
+    if (!project) return { reports: [], projectName: slug };
+
+    const reports = await db.query.reports.findMany({
+      where: eq(schema.reports.projectId, project.id),
+      with: { project: true },
+      orderBy: [desc(schema.reports.createdAt)],
+      limit: 100,
+    });
+
+    return {
+      projectName: project.name,
+      reports: reports.map((r: any) => ({
+        id: r.id,
+        title: r.title,
+        project: { id: r.project.id, name: r.project.name, slug: r.project.slug },
+        totalTests: r.totalTests,
+        passed: r.passed,
+        failed: r.failed,
+        skipped: r.skipped,
+        durationMs: r.durationMs,
+        branch: r.branch,
+        commitSha: r.commitSha,
+        createdAt: r.createdAt,
+        url: `/reports/${r.id}`,
+      })),
+    };
+  } catch (error) {
+    console.error("Failed to load project reports:", error);
     return { reports: [], projectName: slug };
   }
 }

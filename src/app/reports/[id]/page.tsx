@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getDb, schema } from "@/lib/db";
+import { eq } from "drizzle-orm";
 
 interface ReportDetail {
   id: string;
@@ -10,24 +12,48 @@ interface ReportDetail {
   skipped: number;
   flaky: number;
   durationMs: number;
-  branch?: string;
-  commitSha?: string;
-  commitMessage?: string;
-  ciProvider?: string;
-  buildUrl?: string;
-  createdAt: string;
+  branch: string | null;
+  commitSha: string | null;
+  commitMessage: string | null;
+  ciProvider: string | null;
+  buildUrl: string | null;
+  createdAt: Date;
   traces: { id: string; testName: string; testFile: string; sizeBytes: number }[];
 }
 
 async function getReport(id: string): Promise<ReportDetail | null> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    const res = await fetch(`${baseUrl}/api/reports/${id}`, {
-      cache: "no-store",
+    const db = getDb();
+    const report = await db.query.reports.findFirst({
+      where: eq(schema.reports.id, id),
+      with: { project: true, traces: true },
     });
-    if (!res.ok) return null;
-    return res.json();
-  } catch {
+    if (!report) return null;
+    return {
+      id: report.id,
+      title: report.title,
+      project: { id: report.project.id, name: report.project.name, slug: report.project.slug },
+      totalTests: report.totalTests,
+      passed: report.passed,
+      failed: report.failed,
+      skipped: report.skipped,
+      flaky: report.flaky,
+      durationMs: report.durationMs,
+      branch: report.branch,
+      commitSha: report.commitSha,
+      commitMessage: report.commitMessage,
+      ciProvider: report.ciProvider,
+      buildUrl: report.buildUrl,
+      createdAt: report.createdAt,
+      traces: report.traces.map((t: any) => ({
+        id: t.id,
+        testName: t.testName,
+        testFile: t.testFile,
+        sizeBytes: t.sizeBytes,
+      })),
+    };
+  } catch (error) {
+    console.error("Failed to load report:", error);
     return null;
   }
 }

@@ -41,7 +41,7 @@ export async function GET(
       buildUrl: report.buildUrl,
       metadata: report.metadata,
       createdAt: report.createdAt,
-      traces: report.traces.map((t) => ({
+      traces: report.traces.map((t: any) => ({
         id: t.id,
         testName: t.testName,
         testFile: t.testFile,

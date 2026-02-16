@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({
-      reports: reports.map((r) => ({
+      reports: reports.map((r: any) => ({
         id: r.id,
         title: r.title,
         project: { id: r.project.id, name: r.project.name, slug: r.project.slug },

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getDb, schema } from "@/lib/db";
+import { desc } from "drizzle-orm";
 
 interface Report {
   id: string;
@@ -10,23 +12,39 @@ interface Report {
   skipped: number;
   flaky: number;
   durationMs: number;
-  branch?: string;
-  commitSha?: string;
-  ciProvider?: string;
-  createdAt: string;
+  branch: string | null;
+  commitSha: string | null;
+  ciProvider: string | null;
+  createdAt: Date;
   url: string;
 }
 
 async function getReports(): Promise<Report[]> {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
-    const res = await fetch(`${baseUrl}/api/reports?limit=50`, {
-      cache: "no-store",
+    const db = getDb();
+    const reports = await db.query.reports.findMany({
+      with: { project: true },
+      orderBy: [desc(schema.reports.createdAt)],
+      limit: 50,
     });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.reports || [];
-  } catch {
+    return reports.map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      project: { id: r.project.id, name: r.project.name, slug: r.project.slug },
+      totalTests: r.totalTests,
+      passed: r.passed,
+      failed: r.failed,
+      skipped: r.skipped,
+      flaky: r.flaky,
+      durationMs: r.durationMs,
+      branch: r.branch,
+      commitSha: r.commitSha,
+      ciProvider: r.ciProvider,
+      createdAt: r.createdAt,
+      url: `/reports/${r.id}`,
+    }));
+  } catch (error) {
+    console.error("Failed to load reports:", error);
     return [];
   }
 }
@@ -37,7 +55,7 @@ function formatDuration(ms: number): string {
   return `${(ms / 60000).toFixed(1)}m`;
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string | Date): string {
   return new Date(dateStr).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
