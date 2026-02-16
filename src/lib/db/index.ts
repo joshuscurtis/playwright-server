@@ -1,12 +1,21 @@
-import { drizzle } from "drizzle-orm/neon-http";
+import { drizzle as drizzleNeon } from "drizzle-orm/neon-http";
+import { drizzle as drizzlePg } from "drizzle-orm/node-postgres";
 import { neon } from "@neondatabase/serverless";
+import pg from "pg";
 import * as schema from "./schema";
 
-let _db: ReturnType<typeof createDb> | null = null;
+type DbInstance = ReturnType<typeof drizzleNeon> | ReturnType<typeof drizzlePg>;
 
-function createDb(connectionString: string) {
+let _db: DbInstance | null = null;
+
+function createNeonDb(connectionString: string) {
   const sql = neon(connectionString);
-  return drizzle(sql, { schema });
+  return drizzleNeon(sql, { schema });
+}
+
+function createPgDb(connectionString: string) {
+  const pool = new pg.Pool({ connectionString });
+  return drizzlePg(pool, { schema });
 }
 
 export function getDb(connectionString?: string) {
@@ -15,9 +24,14 @@ export function getDb(connectionString?: string) {
     throw new Error("DATABASE_URL is required");
   }
   if (!_db) {
-    _db = createDb(url);
+    // Use node-postgres for local/standard PostgreSQL, Neon for serverless
+    if (url.includes("neon.tech")) {
+      _db = createNeonDb(url);
+    } else {
+      _db = createPgDb(url);
+    }
   }
-  return _db;
+  return _db as any;
 }
 
 export type Database = ReturnType<typeof getDb>;
