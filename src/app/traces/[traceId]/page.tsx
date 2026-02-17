@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { getDb, schema } from "@/lib/db";
 import { eq } from "drizzle-orm";
+import { Anchor, Group, Text } from "@mantine/core";
 
 async function getTrace(traceId: string) {
   try {
@@ -35,37 +36,40 @@ export default async function TraceViewerPage({
     : traceId;
 
   return (
-    <div className="h-screen w-screen">
-      <div className="flex items-center justify-between bg-gray-900 text-white px-4 py-2 text-sm">
-        <div className="flex items-center gap-3">
+    <div style={{ height: "100vh", width: "100vw", display: "flex", flexDirection: "column" }}>
+      <Group
+        justify="space-between"
+        px="md"
+        py="xs"
+        style={{ backgroundColor: "var(--mantine-color-dark-7)", flexShrink: 0 }}
+      >
+        <Group gap="sm">
           {trace?.report ? (
-            <a
-              href={`/reports/${trace.report.id}`}
-              className="text-blue-400 hover:text-blue-300"
-            >
+            <Anchor href={`/reports/${trace.report.id}`} size="sm" c="blue.4">
               &larr; Back to report
-            </a>
+            </Anchor>
           ) : (
-            <a href="/" className="text-blue-400 hover:text-blue-300">
+            <Anchor href="/" size="sm" c="blue.4">
               &larr; Back
-            </a>
+            </Anchor>
           )}
-          <span className="text-gray-400">|</span>
-          <span className="truncate">{displayName}</span>
-        </div>
-        <a
+          <Text c="dark.2" size="sm">|</Text>
+          <Text c="white" size="sm" truncate>{displayName}</Text>
+        </Group>
+        <Anchor
           href={viewerUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-400 hover:text-blue-300 text-xs flex-shrink-0 ml-4"
+          size="xs"
+          c="blue.4"
+          style={{ flexShrink: 0 }}
         >
           Open in Playwright Trace Viewer &rarr;
-        </a>
-      </div>
+        </Anchor>
+      </Group>
       <iframe
         src={viewerUrl}
-        className="w-full"
-        style={{ height: "calc(100vh - 40px)" }}
+        style={{ width: "100%", flex: 1, border: "none" }}
         title="Playwright Trace Viewer"
       />
     </div>

@@ -1,6 +1,19 @@
 import Link from "next/link";
 import { getDb, schema } from "@/lib/db";
 import { desc } from "drizzle-orm";
+import {
+  Container,
+  Title,
+  Text,
+  Table,
+  Badge,
+  Code,
+  Paper,
+  Group,
+  Stack,
+  Anchor,
+  Card,
+} from "@mantine/core";
 
 export const dynamic = "force-dynamic";
 
@@ -66,54 +79,38 @@ function formatDate(dateStr: string | Date): string {
   });
 }
 
-function StatusBadge({ passed, failed, total }: { passed: number; failed: number; total: number }) {
+function statusBadge(passed: number, failed: number, total: number) {
   if (failed > 0) {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">
-        {failed} failed
-      </span>
-    );
+    return <Badge color="red" variant="light" size="sm">{failed} failed</Badge>;
   }
   if (passed === total && total > 0) {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800">
-        All passed
-      </span>
-    );
+    return <Badge color="green" variant="light" size="sm">All passed</Badge>;
   }
-  return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-      {total} tests
-    </span>
-  );
+  return <Badge color="gray" variant="light" size="sm">{total} tests</Badge>;
 }
 
 export default async function DashboardPage() {
   const reports = await getReports();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <h1 className="text-2xl font-bold text-gray-900">
-            Playwright Reports
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
+    <div style={{ minHeight: "100vh", backgroundColor: "var(--mantine-color-gray-0)" }}>
+      <Paper shadow="0" radius={0} style={{ borderBottom: "1px solid var(--mantine-color-gray-3)" }}>
+        <Container size="xl" py="md">
+          <Title order={2}>Playwright Reports</Title>
+          <Text size="sm" c="dimmed" mt={4}>
             Self-hosted test report dashboard
-          </p>
-        </div>
-      </header>
+          </Text>
+        </Container>
+      </Paper>
 
-      <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+      <Container size="xl" py="lg">
         {reports.length === 0 ? (
-          <div className="text-center py-16">
-            <h2 className="text-lg font-medium text-gray-900 mb-2">
-              No reports yet
-            </h2>
-            <p className="text-gray-500 mb-4">
+          <Paper p="xl" ta="center">
+            <Title order={3} mb="xs">No reports yet</Title>
+            <Text c="dimmed" mb="md">
               Upload your first Playwright report to get started.
-            </p>
-            <pre className="inline-block text-left bg-gray-900 text-green-400 p-4 rounded-lg text-sm">
+            </Text>
+            <Code block p="md">
 {`// playwright.config.ts
 reporter: [
   ['playwright-report-server-reporter', {
@@ -121,139 +118,109 @@ reporter: [
     projectName: 'my-project'
   }]
 ]`}
-            </pre>
-          </div>
+            </Code>
+          </Paper>
         ) : (
           <>
             {/* Desktop table */}
-            <div className="hidden md:block bg-white shadow rounded-lg overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Report
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Project
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tests
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Duration
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Branch
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+            <Paper shadow="xs" radius="md" visibleFrom="md" style={{ overflow: "hidden" }}>
+              <Table striped highlightOnHover>
+                <Table.Thead>
+                  <Table.Tr>
+                    <Table.Th>Report</Table.Th>
+                    <Table.Th>Project</Table.Th>
+                    <Table.Th>Status</Table.Th>
+                    <Table.Th>Tests</Table.Th>
+                    <Table.Th>Duration</Table.Th>
+                    <Table.Th>Branch</Table.Th>
+                    <Table.Th>Date</Table.Th>
+                  </Table.Tr>
+                </Table.Thead>
+                <Table.Tbody>
                   {reports.map((report) => (
-                    <tr key={report.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Link
-                          href={`/reports/${report.id}`}
-                          className="text-blue-600 hover:text-blue-800 font-medium"
-                        >
+                    <Table.Tr key={report.id}>
+                      <Table.Td>
+                        <Anchor component={Link} href={`/reports/${report.id}`} fw={500} size="sm">
                           {report.title}
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <Link
-                          href={`/projects/${report.project.slug}`}
-                          className="text-gray-600 hover:text-gray-800"
-                        >
+                        </Anchor>
+                      </Table.Td>
+                      <Table.Td>
+                        <Anchor component={Link} href={`/projects/${report.project.slug}`} c="dimmed" size="sm">
                           {report.project.name}
-                        </Link>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <StatusBadge
-                          passed={report.passed}
-                          failed={report.failed}
-                          total={report.totalTests}
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <span className="text-green-600">{report.passed}</span>
-                        {report.failed > 0 && (
-                          <> / <span className="text-red-600">{report.failed}</span></>
-                        )}
-                        {report.skipped > 0 && (
-                          <> / <span className="text-gray-400">{report.skipped} skip</span></>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDuration(report.durationMs)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {report.branch && (
-                          <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">
-                            {report.branch}
-                          </code>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {formatDate(report.createdAt)}
-                      </td>
-                    </tr>
+                        </Anchor>
+                      </Table.Td>
+                      <Table.Td>
+                        {statusBadge(report.passed, report.failed, report.totalTests)}
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm">
+                          <Text span c="green" fw={500}>{report.passed}</Text>
+                          {report.failed > 0 && (
+                            <Text span c="red" fw={500}> / {report.failed}</Text>
+                          )}
+                          {report.skipped > 0 && (
+                            <Text span c="dimmed"> / {report.skipped} skip</Text>
+                          )}
+                        </Text>
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm" c="dimmed">{formatDuration(report.durationMs)}</Text>
+                      </Table.Td>
+                      <Table.Td>
+                        {report.branch && <Code>{report.branch}</Code>}
+                      </Table.Td>
+                      <Table.Td>
+                        <Text size="sm" c="dimmed">{formatDate(report.createdAt)}</Text>
+                      </Table.Td>
+                    </Table.Tr>
                   ))}
-                </tbody>
-              </table>
-            </div>
+                </Table.Tbody>
+              </Table>
+            </Paper>
 
             {/* Mobile card list */}
-            <div className="md:hidden space-y-3">
+            <Stack gap="sm" hiddenFrom="md">
               {reports.map((report) => (
-                <Link
+                <Card
                   key={report.id}
+                  shadow="xs"
+                  radius="md"
+                  padding="md"
+                  component={Link}
                   href={`/reports/${report.id}`}
-                  className="block bg-white shadow rounded-lg p-4 hover:shadow-md transition-shadow"
+                  style={{ textDecoration: "none", color: "inherit" }}
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-sm font-medium text-blue-600 truncate">
+                  <Group justify="space-between" align="flex-start" wrap="nowrap" gap="sm">
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <Text size="sm" fw={500} c="blue" truncate>
                         {report.title}
-                      </h3>
-                      <p className="text-xs text-gray-500 mt-0.5">
+                      </Text>
+                      <Text size="xs" c="dimmed" mt={2}>
                         {report.project.name}
-                      </p>
+                      </Text>
                     </div>
-                    <StatusBadge
-                      passed={report.passed}
-                      failed={report.failed}
-                      total={report.totalTests}
-                    />
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-xs text-gray-500">
-                    <span>
-                      <span className="text-green-600 font-medium">{report.passed}</span>
+                    {statusBadge(report.passed, report.failed, report.totalTests)}
+                  </Group>
+                  <Group gap="md" mt="sm">
+                    <Text size="xs" c="dimmed">
+                      <Text span c="green" fw={500}>{report.passed}</Text>
                       {report.failed > 0 && (
-                        <> / <span className="text-red-600 font-medium">{report.failed}</span> fail</>
+                        <Text span c="red" fw={500}> / {report.failed} fail</Text>
                       )}
                       {report.skipped > 0 && (
-                        <> / <span className="text-gray-400">{report.skipped} skip</span></>
+                        <Text span c="dimmed"> / {report.skipped} skip</Text>
                       )}
-                    </span>
-                    <span>{formatDuration(report.durationMs)}</span>
-                    {report.branch && (
-                      <code className="bg-gray-100 px-1.5 py-0.5 rounded">
-                        {report.branch}
-                      </code>
-                    )}
-                    <span className="ml-auto">{formatDate(report.createdAt)}</span>
-                  </div>
-                </Link>
+                    </Text>
+                    <Text size="xs" c="dimmed">{formatDuration(report.durationMs)}</Text>
+                    {report.branch && <Code style={{ fontSize: "var(--mantine-font-size-xs)" }}>{report.branch}</Code>}
+                    <Text size="xs" c="dimmed" ml="auto">{formatDate(report.createdAt)}</Text>
+                  </Group>
+                </Card>
               ))}
-            </div>
+            </Stack>
           </>
         )}
-      </main>
+      </Container>
     </div>
   );
 }

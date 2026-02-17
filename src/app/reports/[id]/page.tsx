@@ -1,6 +1,19 @@
 import Link from "next/link";
 import { getDb, schema } from "@/lib/db";
 import { eq } from "drizzle-orm";
+import {
+  Container,
+  Title,
+  Text,
+  Paper,
+  SimpleGrid,
+  Breadcrumbs,
+  Anchor,
+  Code,
+  Group,
+  Stack,
+  Badge,
+} from "@mantine/core";
 
 interface ReportDetail {
   id: string;
@@ -58,6 +71,11 @@ async function getReport(id: string): Promise<ReportDetail | null> {
   }
 }
 
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  return `${(ms / 1000).toFixed(1)}s`;
+}
+
 export default async function ReportPage({
   params,
 }: {
@@ -68,135 +86,118 @@ export default async function ReportPage({
 
   if (!report) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            Report not found
-          </h1>
-          <Link href="/" className="text-blue-600 hover:text-blue-800">
-            &larr; Back to dashboard
-          </Link>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div style={{ textAlign: "center" }}>
+          <Title order={2} mb="xs">Report not found</Title>
+          <Anchor component={Link} href="/">&larr; Back to dashboard</Anchor>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-500 mb-2 min-w-0">
-            <Link href="/" className="hover:text-gray-700 flex-shrink-0">
-              Dashboard
-            </Link>
-            <span>/</span>
-            <Link
-              href={`/projects/${report.project.slug}`}
-              className="hover:text-gray-700 flex-shrink-0"
-            >
-              {report.project.name}
-            </Link>
-            <span>/</span>
-            <span className="text-gray-900 truncate">{report.title}</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{report.title}</h1>
+  const breadcrumbItems = [
+    <Anchor component={Link} href="/" key="dash" size="sm">Dashboard</Anchor>,
+    <Anchor component={Link} href={`/projects/${report.project.slug}`} key="proj" size="sm">
+      {report.project.name}
+    </Anchor>,
+    <Text size="sm" key="title" truncate>{report.title}</Text>,
+  ];
 
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-sm text-gray-500">
+  return (
+    <div style={{ minHeight: "100vh", backgroundColor: "var(--mantine-color-gray-0)" }}>
+      <Paper shadow="0" radius={0} style={{ borderBottom: "1px solid var(--mantine-color-gray-3)" }}>
+        <Container size="xl" py="md">
+          <Breadcrumbs mb="xs">{breadcrumbItems}</Breadcrumbs>
+          <Title order={2}>{report.title}</Title>
+
+          <Group gap="md" mt="sm">
             {report.branch && (
-              <span>
-                Branch:{" "}
-                <code className="bg-gray-100 px-1.5 py-0.5 rounded">
-                  {report.branch}
-                </code>
-              </span>
+              <Text size="sm" c="dimmed">
+                Branch: <Code>{report.branch}</Code>
+              </Text>
             )}
             {report.commitSha && (
-              <span>
-                Commit:{" "}
-                <code className="bg-gray-100 px-1.5 py-0.5 rounded">
-                  {report.commitSha.slice(0, 8)}
-                </code>
-              </span>
+              <Text size="sm" c="dimmed">
+                Commit: <Code>{report.commitSha.slice(0, 8)}</Code>
+              </Text>
             )}
-            {report.ciProvider && <span>CI: {report.ciProvider}</span>}
+            {report.ciProvider && (
+              <Text size="sm" c="dimmed">CI: {report.ciProvider}</Text>
+            )}
             {report.buildUrl && (
-              <a
-                href={report.buildUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:text-blue-800"
-              >
+              <Anchor href={report.buildUrl} target="_blank" rel="noopener noreferrer" size="sm">
                 Build link &rarr;
-              </a>
+              </Anchor>
             )}
-          </div>
+          </Group>
 
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-4 mt-4">
+          <SimpleGrid cols={{ base: 3, sm: 6 }} mt="md">
             <StatBox label="Total" value={report.totalTests} />
             <StatBox label="Passed" value={report.passed} color="green" />
             <StatBox label="Failed" value={report.failed} color="red" />
             <StatBox label="Skipped" value={report.skipped} color="gray" />
             <StatBox label="Flaky" value={report.flaky} color="yellow" />
-            <StatBox
-              label="Duration"
-              value={
-                report.durationMs < 1000
-                  ? `${report.durationMs}ms`
-                  : `${(report.durationMs / 1000).toFixed(1)}s`
-              }
-            />
-          </div>
-        </div>
-      </header>
+            <StatBox label="Duration" value={formatDuration(report.durationMs)} />
+          </SimpleGrid>
+        </Container>
+      </Paper>
 
-      <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        <div className="bg-white shadow rounded-lg overflow-hidden mb-6">
-          <div className="border-b border-gray-200 px-4 py-3 bg-gray-50">
-            <h2 className="font-medium text-gray-900">HTML Report</h2>
-          </div>
+      <Container size="xl" py="lg">
+        <Paper shadow="xs" radius="md" mb="lg" style={{ overflow: "hidden" }}>
+          <Group
+            px="md"
+            py="sm"
+            style={{ borderBottom: "1px solid var(--mantine-color-gray-3)", backgroundColor: "var(--mantine-color-gray-0)" }}
+          >
+            <Text fw={500}>HTML Report</Text>
+          </Group>
           <iframe
             src={`/api/reports/${report.id}/files/index.html`}
-            className="w-full border-0"
-            style={{ minHeight: "50vh", height: "70vh" }}
+            style={{ width: "100%", border: "none", minHeight: "50vh", height: "70vh" }}
             title="Playwright HTML Report"
           />
-        </div>
+        </Paper>
 
         {report.traces.length > 0 && (
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            <div className="border-b border-gray-200 px-4 py-3 bg-gray-50">
-              <h2 className="font-medium text-gray-900">
-                Traces ({report.traces.length})
-              </h2>
-            </div>
-            <ul className="divide-y divide-gray-200">
+          <Paper shadow="xs" radius="md" style={{ overflow: "hidden" }}>
+            <Group
+              px="md"
+              py="sm"
+              style={{ borderBottom: "1px solid var(--mantine-color-gray-3)", backgroundColor: "var(--mantine-color-gray-0)" }}
+            >
+              <Text fw={500}>Traces ({report.traces.length})</Text>
+            </Group>
+            <Stack gap={0}>
               {report.traces.map((trace) => {
                 const displayName = trace.testName.split("/").pop() || trace.testName;
                 return (
-                <li key={trace.id} className="px-4 py-3 hover:bg-gray-50">
-                  <Link
+                  <Anchor
+                    key={trace.id}
+                    component={Link}
                     href={`/traces/${trace.id}`}
-                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1"
+                    underline="never"
+                    px="md"
+                    py="sm"
+                    style={{ borderBottom: "1px solid var(--mantine-color-gray-2)", display: "block" }}
                   >
-                    <div className="min-w-0">
-                      <span className="text-blue-600 hover:text-blue-800 font-medium text-sm truncate block">
-                        {displayName}
-                      </span>
-                      <span className="text-gray-400 text-xs">
-                        {trace.testFile}
-                      </span>
-                    </div>
-                    <span className="text-gray-400 text-xs flex-shrink-0">
-                      {(trace.sizeBytes / 1024).toFixed(0)} KB
-                    </span>
-                  </Link>
-                </li>
+                    <Group justify="space-between" wrap="nowrap">
+                      <div style={{ minWidth: 0 }}>
+                        <Text size="sm" fw={500} c="blue" truncate>
+                          {displayName}
+                        </Text>
+                        <Text size="xs" c="dimmed">{trace.testFile}</Text>
+                      </div>
+                      <Text size="xs" c="dimmed" style={{ flexShrink: 0 }}>
+                        {(trace.sizeBytes / 1024).toFixed(0)} KB
+                      </Text>
+                    </Group>
+                  </Anchor>
                 );
               })}
-            </ul>
-          </div>
+            </Stack>
+          </Paper>
         )}
-      </main>
+      </Container>
     </div>
   );
 }
@@ -210,21 +211,14 @@ function StatBox({
   value: number | string;
   color?: string;
 }) {
-  const colorClasses: Record<string, string> = {
-    green: "text-green-600",
-    red: "text-red-600",
-    yellow: "text-yellow-600",
-    gray: "text-gray-400",
-  };
+  const mantineColor = color === "gray" ? "dimmed" : color;
 
   return (
-    <div className="text-center">
-      <div
-        className={`text-2xl font-bold ${color ? colorClasses[color] : "text-gray-900"}`}
-      >
+    <div style={{ textAlign: "center" }}>
+      <Text size="xl" fw={700} c={mantineColor}>
         {value}
-      </div>
-      <div className="text-xs text-gray-500">{label}</div>
+      </Text>
+      <Text size="xs" c="dimmed">{label}</Text>
     </div>
   );
 }

@@ -1,6 +1,19 @@
 import Link from "next/link";
 import { getDb, schema } from "@/lib/db";
 import { desc, eq } from "drizzle-orm";
+import {
+  Container,
+  Title,
+  Text,
+  Card,
+  Group,
+  Stack,
+  Badge,
+  Code,
+  Anchor,
+  Breadcrumbs,
+  Paper,
+} from "@mantine/core";
 
 interface Report {
   id: string;
@@ -69,82 +82,79 @@ export default async function ProjectPage({
   const { slug } = await params;
   const { reports, projectName } = await getProjectReports(slug);
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
-            <Link href="/" className="hover:text-gray-700">
-              Dashboard
-            </Link>
-            <span>/</span>
-            <span className="text-gray-900">{projectName}</span>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">{projectName}</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {reports.length} report{reports.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-      </header>
+  const breadcrumbItems = [
+    <Anchor component={Link} href="/" key="dash" size="sm">Dashboard</Anchor>,
+    <Text size="sm" key="proj">{projectName}</Text>,
+  ];
 
-      <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+  return (
+    <div style={{ minHeight: "100vh", backgroundColor: "var(--mantine-color-gray-0)" }}>
+      <Paper shadow="0" radius={0} style={{ borderBottom: "1px solid var(--mantine-color-gray-3)" }}>
+        <Container size="xl" py="md">
+          <Breadcrumbs mb="xs">{breadcrumbItems}</Breadcrumbs>
+          <Title order={2}>{projectName}</Title>
+          <Text size="sm" c="dimmed" mt={4}>
+            {reports.length} report{reports.length !== 1 ? "s" : ""}
+          </Text>
+        </Container>
+      </Paper>
+
+      <Container size="xl" py="lg">
         {reports.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">
+          <Text c="dimmed" ta="center" py="xl">
             No reports found for this project.
-          </p>
+          </Text>
         ) : (
-          <div className="space-y-3">
+          <Stack gap="sm">
             {reports.map((report) => (
-              <Link
+              <Card
                 key={report.id}
+                shadow="xs"
+                radius="md"
+                padding="md"
+                component={Link}
                 href={`/reports/${report.id}`}
-                className="block bg-white shadow rounded-lg p-4 hover:shadow-md transition-shadow"
+                style={{ textDecoration: "none", color: "inherit" }}
               >
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div className="min-w-0">
-                    <h3 className="font-medium text-gray-900 truncate">
-                      {report.title}
-                    </h3>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
+                <Group justify="space-between" align="flex-start" wrap="wrap" gap="sm">
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <Text fw={500} truncate>{report.title}</Text>
+                    <Group gap="sm" mt="xs">
                       {report.branch && (
-                        <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">
-                          {report.branch}
-                        </code>
+                        <Code style={{ fontSize: "var(--mantine-font-size-xs)" }}>{report.branch}</Code>
                       )}
                       {report.commitSha && (
-                        <code className="text-xs">
-                          {report.commitSha.slice(0, 8)}
-                        </code>
+                        <Code style={{ fontSize: "var(--mantine-font-size-xs)" }}>{report.commitSha.slice(0, 8)}</Code>
                       )}
-                      <span>
+                      <Text size="xs" c="dimmed">
                         {new Date(report.createdAt).toLocaleString("en-US", {
                           month: "short",
                           day: "numeric",
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
-                      </span>
-                    </div>
+                      </Text>
+                    </Group>
                   </div>
-                  <div className="flex items-center gap-4 text-sm flex-shrink-0">
-                    <span className="text-green-600 font-medium">
+                  <Group gap="sm" style={{ flexShrink: 0 }}>
+                    <Badge color="green" variant="light" size="sm">
                       {report.passed} passed
-                    </span>
+                    </Badge>
                     {report.failed > 0 && (
-                      <span className="text-red-600 font-medium">
+                      <Badge color="red" variant="light" size="sm">
                         {report.failed} failed
-                      </span>
+                      </Badge>
                     )}
-                    <span className="text-gray-400">
+                    <Text size="xs" c="dimmed">
                       {formatDuration(report.durationMs)}
-                    </span>
-                  </div>
-                </div>
-              </Link>
+                    </Text>
+                  </Group>
+                </Group>
+              </Card>
             ))}
-          </div>
+          </Stack>
         )}
-      </main>
+      </Container>
     </div>
   );
 }
