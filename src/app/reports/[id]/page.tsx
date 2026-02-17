@@ -85,23 +85,23 @@ export default async function ReportPage({
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3 text-sm text-gray-500 mb-2">
-            <Link href="/" className="hover:text-gray-700">
+          <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-500 mb-2 min-w-0">
+            <Link href="/" className="hover:text-gray-700 flex-shrink-0">
               Dashboard
             </Link>
             <span>/</span>
             <Link
               href={`/projects/${report.project.slug}`}
-              className="hover:text-gray-700"
+              className="hover:text-gray-700 flex-shrink-0"
             >
               {report.project.name}
             </Link>
             <span>/</span>
-            <span className="text-gray-900">{report.title}</span>
+            <span className="text-gray-900 truncate">{report.title}</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">{report.title}</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{report.title}</h1>
 
-          <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-500">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3 text-sm text-gray-500">
             {report.branch && (
               <span>
                 Branch:{" "}
@@ -131,7 +131,7 @@ export default async function ReportPage({
             )}
           </div>
 
-          <div className="flex gap-6 mt-4">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-4 mt-4">
             <StatBox label="Total" value={report.totalTests} />
             <StatBox label="Passed" value={report.passed} color="green" />
             <StatBox label="Failed" value={report.failed} color="red" />
@@ -157,7 +157,7 @@ export default async function ReportPage({
           <iframe
             src={`/api/reports/${report.id}/files/index.html`}
             className="w-full border-0"
-            style={{ height: "70vh" }}
+            style={{ minHeight: "50vh", height: "70vh" }}
             title="Playwright HTML Report"
           />
         </div>
@@ -174,17 +174,17 @@ export default async function ReportPage({
                 <li key={trace.id} className="px-4 py-3 hover:bg-gray-50">
                   <Link
                     href={`/traces/${report.id}/${encodeURIComponent(trace.testName)}`}
-                    className="flex items-center justify-between"
+                    className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1"
                   >
-                    <div>
-                      <span className="text-blue-600 hover:text-blue-800 font-medium text-sm">
+                    <div className="min-w-0">
+                      <span className="text-blue-600 hover:text-blue-800 font-medium text-sm truncate block">
                         {trace.testName}
                       </span>
-                      <span className="text-gray-400 text-xs ml-2">
+                      <span className="text-gray-400 text-xs">
                         {trace.testFile}
                       </span>
                     </div>
-                    <span className="text-gray-400 text-xs">
+                    <span className="text-gray-400 text-xs flex-shrink-0">
                       {(trace.sizeBytes / 1024).toFixed(0)} KB
                     </span>
                   </Link>

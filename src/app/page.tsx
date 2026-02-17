@@ -124,86 +124,134 @@ reporter: [
             </pre>
           </div>
         ) : (
-          <div className="bg-white shadow rounded-lg overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Report
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Project
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Tests
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Duration
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Branch
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {reports.map((report) => (
-                  <tr key={report.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Link
-                        href={`/reports/${report.id}`}
-                        className="text-blue-600 hover:text-blue-800 font-medium"
-                      >
+          <>
+            {/* Desktop table */}
+            <div className="hidden md:block bg-white shadow rounded-lg overflow-hidden">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Report
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Project
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Tests
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Duration
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Branch
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {reports.map((report) => (
+                    <tr key={report.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Link
+                          href={`/reports/${report.id}`}
+                          className="text-blue-600 hover:text-blue-800 font-medium"
+                        >
+                          {report.title}
+                        </Link>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        <Link
+                          href={`/projects/${report.project.slug}`}
+                          className="text-gray-600 hover:text-gray-800"
+                        >
+                          {report.project.name}
+                        </Link>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <StatusBadge
+                          passed={report.passed}
+                          failed={report.failed}
+                          total={report.totalTests}
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <span className="text-green-600">{report.passed}</span>
+                        {report.failed > 0 && (
+                          <> / <span className="text-red-600">{report.failed}</span></>
+                        )}
+                        {report.skipped > 0 && (
+                          <> / <span className="text-gray-400">{report.skipped} skip</span></>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDuration(report.durationMs)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {report.branch && (
+                          <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">
+                            {report.branch}
+                          </code>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {formatDate(report.createdAt)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile card list */}
+            <div className="md:hidden space-y-3">
+              {reports.map((report) => (
+                <Link
+                  key={report.id}
+                  href={`/reports/${report.id}`}
+                  className="block bg-white shadow rounded-lg p-4 hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="text-sm font-medium text-blue-600 truncate">
                         {report.title}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <Link
-                        href={`/projects/${report.project.slug}`}
-                        className="text-gray-600 hover:text-gray-800"
-                      >
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-0.5">
                         {report.project.name}
-                      </Link>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <StatusBadge
-                        passed={report.passed}
-                        failed={report.failed}
-                        total={report.totalTests}
-                      />
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      <span className="text-green-600">{report.passed}</span>
+                      </p>
+                    </div>
+                    <StatusBadge
+                      passed={report.passed}
+                      failed={report.failed}
+                      total={report.totalTests}
+                    />
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-xs text-gray-500">
+                    <span>
+                      <span className="text-green-600 font-medium">{report.passed}</span>
                       {report.failed > 0 && (
-                        <> / <span className="text-red-600">{report.failed}</span></>
+                        <> / <span className="text-red-600 font-medium">{report.failed}</span> fail</>
                       )}
                       {report.skipped > 0 && (
                         <> / <span className="text-gray-400">{report.skipped} skip</span></>
                       )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDuration(report.durationMs)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {report.branch && (
-                        <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">
-                          {report.branch}
-                        </code>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(report.createdAt)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </span>
+                    <span>{formatDuration(report.durationMs)}</span>
+                    {report.branch && (
+                      <code className="bg-gray-100 px-1.5 py-0.5 rounded">
+                        {report.branch}
+                      </code>
+                    )}
+                    <span className="ml-auto">{formatDate(report.createdAt)}</span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </>
         )}
       </main>
     </div>

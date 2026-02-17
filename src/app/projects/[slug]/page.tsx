@@ -100,12 +100,12 @@ export default async function ProjectPage({
                 href={`/reports/${report.id}`}
                 className="block bg-white shadow rounded-lg p-4 hover:shadow-md transition-shadow"
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium text-gray-900">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="font-medium text-gray-900 truncate">
                       {report.title}
                     </h3>
-                    <div className="flex gap-4 mt-1 text-sm text-gray-500">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1 text-sm text-gray-500">
                       {report.branch && (
                         <code className="bg-gray-100 px-1.5 py-0.5 rounded text-xs">
                           {report.branch}
@@ -126,7 +126,7 @@ export default async function ProjectPage({
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4 text-sm">
+                  <div className="flex items-center gap-4 text-sm flex-shrink-0">
                     <span className="text-green-600 font-medium">
                       {report.passed} passed
                     </span>
