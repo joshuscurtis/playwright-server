@@ -1,4 +1,67 @@
 body {
   margin: 0;
   padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth page transitions */
+a { transition: color 0.15s ease; }
+
+/* Table row hover */
+tr.hoverable:hover td {
+  background-color: var(--mantine-color-gray-0);
+}
+
+/* Interactive list items */
+.list-item-hover {
+  transition: background-color 0.1s ease;
+}
+.list-item-hover:hover {
+  background-color: var(--mantine-color-gray-0);
+}
+
+/* Clickable card effect */
+.card-hover {
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.card-hover:hover {
+  box-shadow: var(--mantine-shadow-md);
+  transform: translateY(-1px);
+}
+
+/* Stat card subtle bg */
+.stat-card {
+  background: white;
+  border: 1px solid var(--mantine-color-gray-2);
+  border-radius: var(--mantine-radius-md);
+  padding: var(--mantine-spacing-md);
+  text-align: center;
+  transition: border-color 0.15s ease;
+}
+.stat-card:hover {
+  border-color: var(--mantine-color-gray-4);
+}
+
+/* Section header consistent style */
+.section-header {
+  padding: var(--mantine-spacing-sm) var(--mantine-spacing-md);
+  border-bottom: 1px solid var(--mantine-color-gray-2);
+  background-color: var(--mantine-color-gray-0);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--mantine-color-gray-4);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--mantine-color-gray-5);
 }

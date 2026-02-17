@@ -6,7 +6,6 @@ import {
   Title,
   Text,
   Paper,
-  SimpleGrid,
   Breadcrumbs,
   Anchor,
   Code,
@@ -100,9 +99,10 @@ async function getReport(id: string): Promise<ReportDetail | null> {
   }
 }
 
-function formatDuration(ms: number): string {
+function fmt(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
-  return `${(ms / 1000).toFixed(1)}s`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${(ms / 60000).toFixed(1)}m`;
 }
 
 export default async function ReportPage({
@@ -115,7 +115,7 @@ export default async function ReportPage({
 
   if (!report) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ minHeight: "calc(100vh - 56px)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ textAlign: "center" }}>
           <Title order={2} mb="xs">Report not found</Title>
           <Anchor href="/">&larr; Back to dashboard</Anchor>
@@ -124,57 +124,79 @@ export default async function ReportPage({
     );
   }
 
-  const breadcrumbItems = [
-    <Anchor href="/" key="dash" size="sm">Dashboard</Anchor>,
-    <Anchor href={`/projects/${report.project.slug}`} key="proj" size="sm">
-      {report.project.name}
-    </Anchor>,
-    <Text size="sm" key="title" truncate>{report.title}</Text>,
-  ];
+  const passRate = report.totalTests > 0
+    ? Math.round((report.passed / report.totalTests) * 100)
+    : 0;
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "var(--mantine-color-gray-0)" }}>
-      <Paper shadow="0" radius={0} style={{ borderBottom: "1px solid var(--mantine-color-gray-3)" }}>
-        <Container size="xl" py="md">
-          <Breadcrumbs mb="xs">{breadcrumbItems}</Breadcrumbs>
-          <Title order={2}>{report.title}</Title>
+    <div style={{ minHeight: "calc(100vh - 56px)", backgroundColor: "#f8f9fa" }}>
+      {/* Hero Header */}
+      <div
+        style={{
+          background: "linear-gradient(135deg, #087f5b 0%, #099268 50%, #0ca678 100%)",
+          color: "white",
+        }}
+      >
+        <Container size="xl" py="xl">
+          <Breadcrumbs
+            mb="sm"
+            separatorMargin={6}
+            styles={{ separator: { color: "rgba(255,255,255,0.5)" } }}
+          >
+            <Anchor href="/" size="sm" c="white" style={{ opacity: 0.8 }}>Dashboard</Anchor>
+            <Anchor href={`/projects/${report.project.slug}`} size="sm" c="white" style={{ opacity: 0.8 }}>
+              {report.project.name}
+            </Anchor>
+            <Text size="sm" c="white">{report.title}</Text>
+          </Breadcrumbs>
 
-          <Group gap="md" mt="sm">
+          <Title order={2} c="white" mb={4}>{report.title}</Title>
+
+          <Group gap="md" mt={4}>
             {report.branch && (
-              <Text size="sm" c="dimmed">
-                Branch: <Code>{report.branch}</Code>
+              <Text size="sm" style={{ opacity: 0.8 }}>
+                Branch: <Code style={{ backgroundColor: "rgba(255,255,255,0.2)", color: "white", fontSize: 11 }}>{report.branch}</Code>
               </Text>
             )}
             {report.commitSha && (
-              <Text size="sm" c="dimmed">
-                Commit: <Code>{report.commitSha.slice(0, 8)}</Code>
+              <Text size="sm" style={{ opacity: 0.8 }}>
+                Commit: <Code style={{ backgroundColor: "rgba(255,255,255,0.2)", color: "white", fontSize: 11 }}>{report.commitSha.slice(0, 8)}</Code>
               </Text>
             )}
             {report.ciProvider && (
-              <Text size="sm" c="dimmed">CI: {report.ciProvider}</Text>
+              <Text size="sm" style={{ opacity: 0.8 }}>CI: {report.ciProvider}</Text>
             )}
             {report.buildUrl && (
-              <Anchor href={report.buildUrl} target="_blank" rel="noopener noreferrer" size="sm">
+              <Anchor href={report.buildUrl} target="_blank" rel="noopener noreferrer" size="sm" c="white" style={{ opacity: 0.8 }}>
                 Build link &rarr;
               </Anchor>
             )}
           </Group>
 
-          <SimpleGrid cols={{ base: 3, sm: 6 }} mt="md">
-            <StatBox label="Total" value={report.totalTests} />
-            <StatBox label="Passed" value={report.passed} color="green" />
-            <StatBox label="Failed" value={report.failed} color="red" />
-            <StatBox label="Skipped" value={report.skipped} color="gray" />
-            <StatBox label="Flaky" value={report.flaky} color="yellow" />
-            <StatBox label="Duration" value={formatDuration(report.durationMs)} />
-          </SimpleGrid>
+          {/* Stat Cards */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
+              gap: 12,
+              marginTop: 20,
+            }}
+          >
+            <HeroStat label="Total" value={report.totalTests} />
+            <HeroStat label="Pass Rate" value={`${passRate}%`} />
+            <HeroStat label="Passed" value={report.passed} />
+            <HeroStat label="Failed" value={report.failed} />
+            <HeroStat label="Skipped" value={report.skipped} />
+            <HeroStat label="Flaky" value={report.flaky} />
+            <HeroStat label="Duration" value={fmt(report.durationMs)} />
+          </div>
         </Container>
-      </Paper>
+      </div>
 
       <Container size="xl" py="lg">
         {/* Test Results Table */}
         {report.testResults.length > 0 && (
-          <div style={{ marginBottom: "var(--mantine-spacing-lg)" }}>
+          <div style={{ marginBottom: 24 }}>
             <TestResultsTable
               testResults={report.testResults}
               projectId={report.project.id}
@@ -183,14 +205,10 @@ export default async function ReportPage({
         )}
 
         {/* HTML Report */}
-        <Paper shadow="xs" radius="md" mb="lg" style={{ overflow: "hidden" }}>
-          <Group
-            px="md"
-            py="sm"
-            style={{ borderBottom: "1px solid var(--mantine-color-gray-3)", backgroundColor: "var(--mantine-color-gray-0)" }}
-          >
-            <Text fw={500}>HTML Report</Text>
-          </Group>
+        <Paper shadow="xs" radius="md" mb="lg" style={{ overflow: "hidden", background: "white" }}>
+          <div className="section-header">
+            <Text fw={600} size="sm">HTML Report</Text>
+          </div>
           <iframe
             src={`/api/reports/${report.id}/files/index.html`}
             style={{ width: "100%", border: "none", minHeight: "50vh", height: "70vh" }}
@@ -200,14 +218,13 @@ export default async function ReportPage({
 
         {/* Traces */}
         {report.traces.length > 0 && (
-          <Paper shadow="xs" radius="md" style={{ overflow: "hidden" }}>
-            <Group
-              px="md"
-              py="sm"
-              style={{ borderBottom: "1px solid var(--mantine-color-gray-3)", backgroundColor: "var(--mantine-color-gray-0)" }}
-            >
-              <Text fw={500}>Traces ({report.traces.length})</Text>
-            </Group>
+          <Paper shadow="xs" radius="md" style={{ overflow: "hidden", background: "white" }}>
+            <div className="section-header">
+              <Group justify="space-between" align="center">
+                <Text fw={600} size="sm">Traces</Text>
+                <Text size="xs" c="dimmed">{report.traces.length} total</Text>
+              </Group>
+            </div>
             <Stack gap={0}>
               {report.traces.map((trace) => {
                 const displayName = trace.testName.split("/").pop() || trace.testName;
@@ -215,16 +232,17 @@ export default async function ReportPage({
                   <Link
                     key={trace.id}
                     href={`/traces/${trace.id}`}
+                    className="list-item-hover"
                     style={{
                       textDecoration: "none",
                       display: "block",
-                      padding: "var(--mantine-spacing-sm) var(--mantine-spacing-md)",
-                      borderBottom: "1px solid var(--mantine-color-gray-2)",
+                      padding: "10px 16px",
+                      borderBottom: "1px solid #f1f3f5",
                     }}
                   >
                     <Group justify="space-between" wrap="nowrap">
                       <div style={{ minWidth: 0 }}>
-                        <Text size="sm" fw={500} c="blue" truncate>
+                        <Text size="sm" fw={500} c="teal">
                           {displayName}
                         </Text>
                         <Text size="xs" c="dimmed">{trace.testFile}</Text>
@@ -244,23 +262,23 @@ export default async function ReportPage({
   );
 }
 
-function StatBox({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: number | string;
-  color?: string;
-}) {
-  const mantineColor = color === "gray" ? "dimmed" : color;
-
+function HeroStat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div style={{ textAlign: "center" }}>
-      <Text size="xl" fw={700} c={mantineColor}>
+    <div
+      style={{
+        background: "rgba(255,255,255,0.15)",
+        borderRadius: 8,
+        padding: "14px 16px",
+        textAlign: "center",
+        backdropFilter: "blur(4px)",
+      }}
+    >
+      <Text size="xl" fw={800} c="white" lh={1.1}>
         {value}
       </Text>
-      <Text size="xs" c="dimmed">{label}</Text>
+      <Text size="xs" c="white" style={{ opacity: 0.7 }} mt={4}>
+        {label}
+      </Text>
     </div>
   );
 }

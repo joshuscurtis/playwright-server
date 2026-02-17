@@ -67,17 +67,36 @@ async function getTestHistory(
 }
 
 const statusColors: Record<string, string> = {
-  passed: "green",
+  passed: "teal",
   failed: "red",
   skipped: "gray",
   flaky: "yellow",
 };
 
-function formatDuration(ms: number): string {
+function fmt(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
   return `${(ms / 60000).toFixed(1)}m`;
 }
+
+const th: React.CSSProperties = {
+  padding: "10px 16px",
+  textAlign: "left",
+  fontWeight: 600,
+  fontSize: 11,
+  color: "#868e96",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  borderBottom: "2px solid #e9ecef",
+  background: "white",
+  whiteSpace: "nowrap",
+};
+
+const td: React.CSSProperties = {
+  padding: "12px 16px",
+  borderBottom: "1px solid #f1f3f5",
+  verticalAlign: "middle",
+};
 
 export default async function TestHistoryPage({
   searchParams,
@@ -88,7 +107,7 @@ export default async function TestHistoryPage({
 
   if (!fullName || !projectId) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ minHeight: "calc(100vh - 56px)", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ textAlign: "center" }}>
           <Title order={2} mb="xs">Missing parameters</Title>
           <Text c="dimmed">fullName and projectId are required</Text>
@@ -101,10 +120,8 @@ export default async function TestHistoryPage({
   const history = await getTestHistory(fullName, projectId);
   const testName = fullName.split(" > ").pop() || fullName;
 
-  // Calculate stats
   const totalRuns = history.length;
   const passCount = history.filter((h) => h.status === "passed").length;
-  const failCount = history.filter((h) => h.status === "failed").length;
   const flakyCount = history.filter((h) => h.status === "flaky").length;
   const passRate = totalRuns > 0 ? Math.round((passCount / totalRuns) * 100) : 0;
   const avgDuration =
@@ -114,12 +131,6 @@ export default async function TestHistoryPage({
   const flakinessScore =
     totalRuns > 0 ? Math.round((flakyCount / totalRuns) * 100) : 0;
 
-  const breadcrumbItems = [
-    <Anchor href="/" key="dash" size="sm">Dashboard</Anchor>,
-    <Text size="sm" key="title" truncate>Test History</Text>,
-  ];
-
-  // Data for charts (reversed for chronological order)
   const chartData = history
     .map((h) => ({
       date: new Date(h.createdAt).toLocaleDateString("en-US", {
@@ -133,132 +144,126 @@ export default async function TestHistoryPage({
     .reverse();
 
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "var(--mantine-color-gray-0)" }}>
-      <Paper shadow="0" radius={0} style={{ borderBottom: "1px solid var(--mantine-color-gray-3)" }}>
-        <Container size="xl" py="md">
-          <Breadcrumbs mb="xs">{breadcrumbItems}</Breadcrumbs>
-          <Title order={2}>{testName}</Title>
-          <Text size="sm" c="dimmed" mt={4}>{fullName}</Text>
+    <div style={{ minHeight: "calc(100vh - 56px)", backgroundColor: "#f8f9fa" }}>
+      {/* Hero */}
+      <div
+        style={{
+          background: "linear-gradient(135deg, #087f5b 0%, #099268 50%, #0ca678 100%)",
+          color: "white",
+        }}
+      >
+        <Container size="xl" py="xl">
+          <Breadcrumbs
+            mb="sm"
+            separatorMargin={6}
+            styles={{ separator: { color: "rgba(255,255,255,0.5)" } }}
+          >
+            <Anchor href="/" size="sm" c="white" style={{ opacity: 0.8 }}>Dashboard</Anchor>
+            <Text size="sm" c="white">Test History</Text>
+          </Breadcrumbs>
+
+          <Title order={2} c="white" mb={4}>{testName}</Title>
+          <Text size="sm" style={{ opacity: 0.7 }}>{fullName}</Text>
 
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))",
-              gap: "var(--mantine-spacing-md)",
-              marginTop: "var(--mantine-spacing-md)",
+              gridTemplateColumns: "repeat(auto-fit, minmax(110px, 1fr))",
+              gap: 12,
+              marginTop: 20,
             }}
           >
-            <div style={{ textAlign: "center" }}>
-              <Text size="xl" fw={700}>{totalRuns}</Text>
-              <Text size="xs" c="dimmed">Total Runs</Text>
-            </div>
-            <div style={{ textAlign: "center" }}>
-              <Text size="xl" fw={700} c="green">{passRate}%</Text>
-              <Text size="xs" c="dimmed">Pass Rate</Text>
-            </div>
-            <div style={{ textAlign: "center" }}>
-              <Text size="xl" fw={700} c="yellow">{flakinessScore}%</Text>
-              <Text size="xs" c="dimmed">Flakiness</Text>
-            </div>
-            <div style={{ textAlign: "center" }}>
-              <Text size="xl" fw={700}>{formatDuration(avgDuration)}</Text>
-              <Text size="xs" c="dimmed">Avg Duration</Text>
-            </div>
+            <HeroStat label="Total Runs" value={totalRuns} />
+            <HeroStat label="Pass Rate" value={`${passRate}%`} />
+            <HeroStat label="Flakiness" value={`${flakinessScore}%`} />
+            <HeroStat label="Avg Duration" value={fmt(avgDuration)} />
           </div>
         </Container>
-      </Paper>
+      </div>
 
       <Container size="xl" py="lg">
-        {/* Duration & Status Charts */}
         {chartData.length > 1 && (
-          <div style={{ marginBottom: "var(--mantine-spacing-lg)" }}>
+          <div style={{ marginBottom: 24 }}>
             <TestHistoryCharts data={chartData} />
           </div>
         )}
 
-        {/* History Table */}
-        <Paper shadow="xs" radius="md" style={{ overflow: "hidden" }}>
-          <div
-            style={{
-              padding: "var(--mantine-spacing-md)",
-              borderBottom: "1px solid var(--mantine-color-gray-3)",
-              backgroundColor: "var(--mantine-color-gray-0)",
-            }}
-          >
-            <Text fw={500}>Run History</Text>
+        <Paper shadow="xs" radius="md" style={{ overflow: "hidden", background: "white" }}>
+          <div className="section-header">
+            <Group justify="space-between" align="center">
+              <Text fw={600} size="sm">Run History</Text>
+              <Text size="xs" c="dimmed">{history.length} runs</Text>
+            </Group>
           </div>
+
           {history.length === 0 ? (
-            <div style={{ padding: "var(--mantine-spacing-xl)", textAlign: "center" }}>
+            <div style={{ padding: 40, textAlign: "center" }}>
               <Text c="dimmed">No history found</Text>
             </div>
           ) : (
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: "var(--mantine-font-size-sm)",
-              }}
-            >
-              <thead>
-                <tr>
-                  <th style={thStyle}>Status</th>
-                  <th style={thStyle}>Report</th>
-                  <th style={thStyle}>Branch</th>
-                  <th style={thStyle}>Duration</th>
-                  <th style={thStyle}>Retries</th>
-                  <th style={thStyle}>Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {history.map((h) => (
-                  <tr key={h.id}>
-                    <td style={tdStyle}>
-                      <Badge
-                        color={statusColors[h.status] || "gray"}
-                        variant="light"
-                        size="sm"
-                      >
-                        {h.status}
-                      </Badge>
-                    </td>
-                    <td style={tdStyle}>
-                      <Anchor href={`/reports/${h.report.id}`} size="sm">
-                        {h.report.title}
-                      </Anchor>
-                    </td>
-                    <td style={tdStyle}>
-                      {h.report.branch ? (
-                        <Code>{h.report.branch}</Code>
-                      ) : (
-                        <Text size="sm" c="dimmed">-</Text>
-                      )}
-                    </td>
-                    <td style={tdStyle}>
-                      <Text size="sm">{formatDuration(h.durationMs)}</Text>
-                    </td>
-                    <td style={tdStyle}>
-                      {h.retries > 0 ? (
-                        <Badge color="orange" variant="light" size="sm">
-                          {h.retries}
-                        </Badge>
-                      ) : (
-                        <Text size="sm" c="dimmed">0</Text>
-                      )}
-                    </td>
-                    <td style={tdStyle}>
-                      <Text size="sm" c="dimmed">
-                        {new Date(h.createdAt).toLocaleString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </Text>
-                    </td>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    <th style={th}>Status</th>
+                    <th style={th}>Report</th>
+                    <th style={th}>Branch</th>
+                    <th style={th}>Duration</th>
+                    <th style={th}>Retries</th>
+                    <th style={th}>Date</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {history.map((h) => (
+                    <tr key={h.id} className="hoverable">
+                      <td style={td}>
+                        <Badge
+                          color={statusColors[h.status] || "gray"}
+                          variant="light"
+                          size="sm"
+                        >
+                          {h.status}
+                        </Badge>
+                      </td>
+                      <td style={td}>
+                        <Anchor href={`/reports/${h.report.id}`} size="sm" fw={500}>
+                          {h.report.title}
+                        </Anchor>
+                      </td>
+                      <td style={td}>
+                        {h.report.branch ? (
+                          <Code style={{ fontSize: 11, padding: "2px 6px" }}>{h.report.branch}</Code>
+                        ) : (
+                          <Text size="xs" c="dimmed">-</Text>
+                        )}
+                      </td>
+                      <td style={td}>
+                        <Text size="sm" ff="monospace" c="dimmed">{fmt(h.durationMs)}</Text>
+                      </td>
+                      <td style={td}>
+                        {h.retries > 0 ? (
+                          <Badge color="orange" variant="light" size="sm">
+                            {h.retries}
+                          </Badge>
+                        ) : (
+                          <Text size="sm" c="dimmed">0</Text>
+                        )}
+                      </td>
+                      <td style={{ ...td, whiteSpace: "nowrap" }}>
+                        <Text size="xs" c="dimmed">
+                          {new Date(h.createdAt).toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </Text>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </Paper>
       </Container>
@@ -266,19 +271,23 @@ export default async function TestHistoryPage({
   );
 }
 
-const thStyle: React.CSSProperties = {
-  padding: "var(--mantine-spacing-xs) var(--mantine-spacing-md)",
-  textAlign: "left",
-  fontWeight: 500,
-  fontSize: "var(--mantine-font-size-xs)",
-  color: "var(--mantine-color-dimmed)",
-  textTransform: "uppercase",
-  letterSpacing: "0.05em",
-  borderBottom: "1px solid var(--mantine-color-gray-3)",
-  backgroundColor: "var(--mantine-color-gray-0)",
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: "var(--mantine-spacing-sm) var(--mantine-spacing-md)",
-  borderBottom: "1px solid var(--mantine-color-gray-2)",
-};
+function HeroStat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div
+      style={{
+        background: "rgba(255,255,255,0.15)",
+        borderRadius: 8,
+        padding: "14px 16px",
+        textAlign: "center",
+        backdropFilter: "blur(4px)",
+      }}
+    >
+      <Text size="xl" fw={800} c="white" lh={1.1}>
+        {value}
+      </Text>
+      <Text size="xs" c="white" style={{ opacity: 0.7 }} mt={4}>
+        {label}
+      </Text>
+    </div>
+  );
+}

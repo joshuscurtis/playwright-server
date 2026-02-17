@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import {
   Badge,
   Text,
@@ -37,10 +37,17 @@ type SortKey = "name" | "status" | "duration" | "file";
 type SortDir = "asc" | "desc";
 
 const statusColors: Record<string, string> = {
-  passed: "green",
+  passed: "teal",
   failed: "red",
   skipped: "gray",
   flaky: "yellow",
+};
+
+const statusOrder: Record<string, number> = {
+  failed: 0,
+  flaky: 1,
+  passed: 2,
+  skipped: 3,
 };
 
 function formatDuration(ms: number): string {
@@ -49,10 +56,31 @@ function formatDuration(ms: number): string {
   return `${(ms / 60000).toFixed(1)}m`;
 }
 
+const th: React.CSSProperties = {
+  padding: "10px 16px",
+  textAlign: "left",
+  fontWeight: 600,
+  fontSize: 11,
+  color: "#868e96",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  borderBottom: "2px solid #e9ecef",
+  background: "white",
+  whiteSpace: "nowrap",
+  cursor: "pointer",
+  userSelect: "none",
+};
+
+const td: React.CSSProperties = {
+  padding: "12px 16px",
+  borderBottom: "1px solid #f1f3f5",
+  verticalAlign: "middle",
+};
+
 export function TestResultsTable({ testResults, projectId }: Props) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
-  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortKey, setSortKey] = useState<SortKey>("status");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -85,7 +113,7 @@ export function TestResultsTable({ testResults, projectId }: Props) {
           cmp = a.name.localeCompare(b.name);
           break;
         case "status":
-          cmp = a.status.localeCompare(b.status);
+          cmp = (statusOrder[a.status] ?? 9) - (statusOrder[b.status] ?? 9);
           break;
         case "duration":
           cmp = a.durationMs - b.durationMs;
@@ -109,47 +137,21 @@ export function TestResultsTable({ testResults, projectId }: Props) {
   };
 
   const sortIcon = (key: SortKey) =>
-    sortKey === key ? (sortDir === "asc" ? " ↑" : " ↓") : "";
+    sortKey === key ? (sortDir === "asc" ? " \u2191" : " \u2193") : "";
 
   const filterButtons: { key: StatusFilter; label: string; color: string }[] = [
-    { key: "all", label: `All (${counts.all})`, color: "blue" },
-    { key: "passed", label: `Passed (${counts.passed})`, color: "green" },
+    { key: "all", label: `All (${counts.all})`, color: "teal" },
+    { key: "passed", label: `Passed (${counts.passed})`, color: "teal" },
     { key: "failed", label: `Failed (${counts.failed})`, color: "red" },
     { key: "skipped", label: `Skipped (${counts.skipped})`, color: "gray" },
     { key: "flaky", label: `Flaky (${counts.flaky})`, color: "yellow" },
   ];
 
-  const thStyle: React.CSSProperties = {
-    padding: "var(--mantine-spacing-xs) var(--mantine-spacing-md)",
-    textAlign: "left",
-    fontWeight: 500,
-    fontSize: "var(--mantine-font-size-xs)",
-    color: "var(--mantine-color-dimmed)",
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-    borderBottom: "1px solid var(--mantine-color-gray-3)",
-    backgroundColor: "var(--mantine-color-gray-0)",
-    cursor: "pointer",
-    userSelect: "none",
-  };
-
-  const tdStyle: React.CSSProperties = {
-    padding: "var(--mantine-spacing-sm) var(--mantine-spacing-md)",
-    borderBottom: "1px solid var(--mantine-color-gray-2)",
-    fontSize: "var(--mantine-font-size-sm)",
-  };
-
   return (
-    <Paper shadow="xs" radius="md" style={{ overflow: "hidden" }}>
-      <div
-        style={{
-          padding: "var(--mantine-spacing-md)",
-          borderBottom: "1px solid var(--mantine-color-gray-3)",
-          backgroundColor: "var(--mantine-color-gray-0)",
-        }}
-      >
+    <Paper shadow="xs" radius="md" style={{ overflow: "hidden", background: "white" }}>
+      <div className="section-header">
         <Group justify="space-between" align="center" mb="sm">
-          <Text fw={500}>Test Results ({filtered.length})</Text>
+          <Text fw={600} size="sm">Test Results ({filtered.length})</Text>
         </Group>
         <Group gap="xs" mb="sm">
           {filterButtons.map((f) => (
@@ -174,47 +176,41 @@ export function TestResultsTable({ testResults, projectId }: Props) {
       </div>
 
       {filtered.length === 0 ? (
-        <div style={{ padding: "var(--mantine-spacing-xl)", textAlign: "center" }}>
+        <div style={{ padding: 40, textAlign: "center" }}>
           <Text c="dimmed">No test results found</Text>
         </div>
       ) : (
         <div style={{ overflowX: "auto" }}>
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              fontSize: "var(--mantine-font-size-sm)",
-            }}
-          >
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr>
-                <th style={thStyle} onClick={() => handleSort("status")}>
+                <th style={th} onClick={() => handleSort("status")}>
                   Status{sortIcon("status")}
                 </th>
-                <th style={thStyle} onClick={() => handleSort("name")}>
+                <th style={th} onClick={() => handleSort("name")}>
                   Test{sortIcon("name")}
                 </th>
-                <th style={thStyle} onClick={() => handleSort("file")}>
+                <th style={th} onClick={() => handleSort("file")}>
                   File{sortIcon("file")}
                 </th>
-                <th style={thStyle} onClick={() => handleSort("duration")}>
+                <th style={th} onClick={() => handleSort("duration")}>
                   Duration{sortIcon("duration")}
                 </th>
-                <th style={thStyle}>Retries</th>
+                <th style={th}>Retries</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((t) => (
-                <>
+                <Fragment key={t.id}>
                   <tr
-                    key={t.id}
+                    className="hoverable"
                     style={{ cursor: t.errorMessage ? "pointer" : "default" }}
                     onClick={() =>
                       t.errorMessage &&
                       setExpandedId(expandedId === t.id ? null : t.id)
                     }
                   >
-                    <td style={tdStyle}>
+                    <td style={td}>
                       <Badge
                         color={statusColors[t.status] || "gray"}
                         variant="light"
@@ -223,7 +219,7 @@ export function TestResultsTable({ testResults, projectId }: Props) {
                         {t.status}
                       </Badge>
                     </td>
-                    <td style={tdStyle}>
+                    <td style={td}>
                       <Anchor
                         href={`/tests?fullName=${encodeURIComponent(t.fullName)}&projectId=${projectId}`}
                         size="sm"
@@ -238,39 +234,38 @@ export function TestResultsTable({ testResults, projectId }: Props) {
                         </Text>
                       )}
                     </td>
-                    <td style={tdStyle}>
+                    <td style={td}>
                       <Text size="xs" c="dimmed">
                         {t.fileName || "-"}
                       </Text>
                     </td>
-                    <td style={tdStyle}>
-                      <Text size="sm">{formatDuration(t.durationMs)}</Text>
+                    <td style={td}>
+                      <Text size="sm" ff="monospace" c="dimmed">
+                        {formatDuration(t.durationMs)}
+                      </Text>
                     </td>
-                    <td style={tdStyle}>
+                    <td style={td}>
                       {t.retries > 0 ? (
                         <Badge color="orange" variant="light" size="sm">
                           {t.retries}
                         </Badge>
                       ) : (
-                        <Text size="sm" c="dimmed">
-                          0
-                        </Text>
+                        <Text size="sm" c="dimmed">0</Text>
                       )}
                     </td>
                   </tr>
                   {expandedId === t.id && t.errorMessage && (
-                    <tr key={`${t.id}-error`}>
+                    <tr>
                       <td
                         colSpan={5}
                         style={{
-                          padding: "var(--mantine-spacing-md)",
-                          backgroundColor: "var(--mantine-color-red-0)",
-                          borderBottom:
-                            "1px solid var(--mantine-color-gray-2)",
+                          padding: 16,
+                          backgroundColor: "#fff5f5",
+                          borderBottom: "1px solid #f1f3f5",
                         }}
                       >
                         <Stack gap="xs">
-                          <Text size="sm" fw={500} c="red">
+                          <Text size="sm" fw={600} c="red">
                             Error
                           </Text>
                           <Text
@@ -285,7 +280,7 @@ export function TestResultsTable({ testResults, projectId }: Props) {
                               style={{
                                 maxHeight: 300,
                                 overflow: "auto",
-                                fontSize: "var(--mantine-font-size-xs)",
+                                fontSize: 11,
                               }}
                             >
                               {t.errorStack}
@@ -295,7 +290,7 @@ export function TestResultsTable({ testResults, projectId }: Props) {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>

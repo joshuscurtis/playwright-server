@@ -11,7 +11,6 @@ import {
   Group,
   Stack,
   Anchor,
-  Card,
 } from "@mantine/core";
 import { DashboardCharts } from "@/app/components/DashboardCharts";
 
@@ -31,7 +30,6 @@ interface Report {
   commitSha: string | null;
   ciProvider: string | null;
   createdAt: Date;
-  url: string;
 }
 
 async function getReports(): Promise<Report[]> {
@@ -45,7 +43,11 @@ async function getReports(): Promise<Report[]> {
     return reports.map((r: any) => ({
       id: r.id,
       title: r.title,
-      project: { id: r.project.id, name: r.project.name, slug: r.project.slug },
+      project: {
+        id: r.project.id,
+        name: r.project.name,
+        slug: r.project.slug,
+      },
       totalTests: r.totalTests,
       passed: r.passed,
       failed: r.failed,
@@ -56,7 +58,6 @@ async function getReports(): Promise<Report[]> {
       commitSha: r.commitSha,
       ciProvider: r.ciProvider,
       createdAt: r.createdAt,
-      url: `/reports/${r.id}`,
     }));
   } catch (error) {
     console.error("Failed to load reports:", error);
@@ -64,14 +65,14 @@ async function getReports(): Promise<Report[]> {
   }
 }
 
-function formatDuration(ms: number): string {
+function fmt(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
   return `${(ms / 60000).toFixed(1)}m`;
 }
 
-function formatDate(dateStr: string | Date): string {
-  return new Date(dateStr).toLocaleString("en-US", {
+function fmtDate(d: string | Date): string {
+  return new Date(d).toLocaleString("en-US", {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -79,185 +80,237 @@ function formatDate(dateStr: string | Date): string {
   });
 }
 
-function statusBadge(passed: number, failed: number, total: number) {
-  if (failed > 0) {
-    return <Badge color="red" variant="light" size="sm">{failed} failed</Badge>;
-  }
-  if (passed === total && total > 0) {
-    return <Badge color="green" variant="light" size="sm">All passed</Badge>;
-  }
-  return <Badge color="gray" variant="light" size="sm">{total} tests</Badge>;
+function statusBadge(passed: number, failed: number, flaky: number) {
+  if (failed > 0)
+    return (
+      <Badge color="red" variant="light" size="sm">
+        {failed} failed
+      </Badge>
+    );
+  if (flaky > 0)
+    return (
+      <Badge color="yellow" variant="light" size="sm">
+        {flaky} flaky
+      </Badge>
+    );
+  return (
+    <Badge color="teal" variant="light" size="sm">
+      All passed
+    </Badge>
+  );
 }
 
-const tableStyles = {
-  table: {
-    width: "100%",
-    borderCollapse: "collapse" as const,
-    fontSize: "var(--mantine-font-size-sm)",
-  },
-  th: {
-    padding: "var(--mantine-spacing-xs) var(--mantine-spacing-md)",
-    textAlign: "left" as const,
-    fontWeight: 500,
-    fontSize: "var(--mantine-font-size-xs)",
-    color: "var(--mantine-color-dimmed)",
-    textTransform: "uppercase" as const,
-    letterSpacing: "0.05em",
-    borderBottom: "1px solid var(--mantine-color-gray-3)",
-    backgroundColor: "var(--mantine-color-gray-0)",
-  },
-  td: {
-    padding: "var(--mantine-spacing-sm) var(--mantine-spacing-md)",
-    borderBottom: "1px solid var(--mantine-color-gray-2)",
-    whiteSpace: "nowrap" as const,
-  },
-  tr: {
-    cursor: "default",
-  },
+const th: React.CSSProperties = {
+  padding: "10px 16px",
+  textAlign: "left",
+  fontWeight: 600,
+  fontSize: 11,
+  color: "#868e96",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
+  borderBottom: "2px solid #e9ecef",
+  background: "white",
+  whiteSpace: "nowrap",
+};
+
+const td: React.CSSProperties = {
+  padding: "12px 16px",
+  borderBottom: "1px solid #f1f3f5",
+  verticalAlign: "middle",
 };
 
 export default async function DashboardPage() {
   const reports = await getReports();
 
+  const total = reports.length;
+  const latest = reports[0];
+  const sumPassed = reports.reduce((s, r) => s + r.passed, 0);
+  const sumFailed = reports.reduce((s, r) => s + r.failed, 0);
+  const sumFlaky = reports.reduce((s, r) => s + r.flaky, 0);
+  const avgPassRate =
+    total > 0
+      ? Math.round(
+          (reports.reduce(
+            (s, r) =>
+              s + (r.totalTests > 0 ? (r.passed / r.totalTests) * 100 : 0),
+            0
+          ) /
+            total) *
+            10
+        ) / 10
+      : 0;
+
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "var(--mantine-color-gray-0)" }}>
-      <Paper shadow="0" radius={0} style={{ borderBottom: "1px solid var(--mantine-color-gray-3)" }}>
-        <Container size="xl" py="md">
-          <Title order={2}>Playwright Reports</Title>
-          <Text size="sm" c="dimmed" mt={4}>
-            Self-hosted test report dashboard
+    <div style={{ minHeight: "calc(100vh - 56px)", backgroundColor: "#f8f9fa" }}>
+      {/* Hero */}
+      <div
+        style={{
+          background:
+            "linear-gradient(135deg, #087f5b 0%, #099268 50%, #0ca678 100%)",
+          color: "white",
+        }}
+      >
+        <Container size="xl" py="xl">
+          <Title order={2} c="white" mb={4}>
+            Dashboard
+          </Title>
+          <Text size="sm" style={{ opacity: 0.8 }}>
+            {total} report{total !== 1 ? "s" : ""} across all projects
           </Text>
+
+          {total > 0 && (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+                gap: 12,
+                marginTop: 20,
+              }}
+            >
+              <HeroStat label="Reports" value={total} />
+              <HeroStat label="Avg Pass Rate" value={`${avgPassRate}%`} />
+              <HeroStat label="Total Passed" value={sumPassed} />
+              <HeroStat label="Total Failed" value={sumFailed} />
+              <HeroStat label="Total Flaky" value={sumFlaky} />
+              {latest && (
+                <HeroStat label="Latest Duration" value={fmt(latest.durationMs)} />
+              )}
+            </div>
+          )}
         </Container>
-      </Paper>
+      </div>
 
       <Container size="xl" py="lg">
         {reports.length === 0 ? (
-          <Paper p="xl" ta="center">
-            <Title order={3} mb="xs">No reports yet</Title>
-            <Text c="dimmed" mb="md">
+          <Paper p="xl" ta="center" shadow="xs" radius="md">
+            <Text size="lg" fw={600} mb="xs">
+              No reports yet
+            </Text>
+            <Text c="dimmed" mb="lg">
               Upload your first Playwright report to get started.
             </Text>
-            <Code block p="md">
-{`// playwright.config.ts
-reporter: [
-  ['playwright-report-server-reporter', {
-    serverUrl: '${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}',
-    projectName: 'my-project'
-  }]
-]`}
+            <Code block p="md" style={{ textAlign: "left" }}>
+              {`curl -X POST ${process.env.NEXT_PUBLIC_BASE_URL || "https://your-domain.vercel.app"}/api/reports/upload \\
+  -F "file=@playwright-report.zip" \\
+  -F "projectName=my-project" \\
+  -F "title=Nightly Run"`}
             </Code>
           </Paper>
         ) : (
           <>
-            {/* Analytics Charts */}
             <DashboardCharts />
 
-            {/* Desktop table */}
-            <Paper shadow="xs" radius="md" visibleFrom="md" style={{ overflow: "hidden" }}>
-              <div
-                style={{
-                  padding: "var(--mantine-spacing-md)",
-                  borderBottom: "1px solid var(--mantine-color-gray-3)",
-                  backgroundColor: "var(--mantine-color-gray-0)",
-                }}
-              >
-                <Text fw={500}>Recent Reports</Text>
+            <Paper
+              shadow="xs"
+              radius="md"
+              style={{ overflow: "hidden", background: "white" }}
+            >
+              <div className="section-header">
+                <Group justify="space-between" align="center">
+                  <Text fw={600} size="sm">
+                    Recent Reports
+                  </Text>
+                  <Text size="xs" c="dimmed">
+                    {reports.length} total
+                  </Text>
+                </Group>
               </div>
-              <table style={tableStyles.table}>
-                <thead>
-                  <tr>
-                    <th style={tableStyles.th}>Report</th>
-                    <th style={tableStyles.th}>Project</th>
-                    <th style={tableStyles.th}>Status</th>
-                    <th style={tableStyles.th}>Tests</th>
-                    <th style={tableStyles.th}>Duration</th>
-                    <th style={tableStyles.th}>Branch</th>
-                    <th style={tableStyles.th}>Date</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reports.map((report) => (
-                    <tr key={report.id} style={tableStyles.tr}>
-                      <td style={tableStyles.td}>
-                        <Anchor href={`/reports/${report.id}`} fw={500} size="sm">
-                          {report.title}
-                        </Anchor>
-                      </td>
-                      <td style={tableStyles.td}>
-                        <Anchor href={`/projects/${report.project.slug}`} c="dimmed" size="sm">
-                          {report.project.name}
-                        </Anchor>
-                      </td>
-                      <td style={tableStyles.td}>
-                        {statusBadge(report.passed, report.failed, report.totalTests)}
-                      </td>
-                      <td style={tableStyles.td}>
-                        <Text size="sm">
-                          <Text span c="green" fw={500}>{report.passed}</Text>
-                          {report.failed > 0 && (
-                            <Text span c="red" fw={500}> / {report.failed}</Text>
-                          )}
-                          {report.skipped > 0 && (
-                            <Text span c="dimmed"> / {report.skipped} skip</Text>
-                          )}
-                        </Text>
-                      </td>
-                      <td style={tableStyles.td}>
-                        <Text size="sm" c="dimmed">{formatDuration(report.durationMs)}</Text>
-                      </td>
-                      <td style={tableStyles.td}>
-                        {report.branch && <Code>{report.branch}</Code>}
-                      </td>
-                      <td style={tableStyles.td}>
-                        <Text size="sm" c="dimmed">{formatDate(report.createdAt)}</Text>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </Paper>
 
-            {/* Mobile card list */}
-            <Stack gap="sm" hiddenFrom="md">
-              {reports.map((report) => (
-                <Link
-                  key={report.id}
-                  href={`/reports/${report.id}`}
-                  style={{ textDecoration: "none", color: "inherit" }}
-                >
-                  <Card shadow="xs" radius="md" padding="md">
-                    <Group justify="space-between" align="flex-start" wrap="nowrap" gap="sm">
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <Text size="sm" fw={500} c="blue" truncate>
-                          {report.title}
-                        </Text>
-                        <Text size="xs" c="dimmed" mt={2}>
-                          {report.project.name}
-                        </Text>
-                      </div>
-                      {statusBadge(report.passed, report.failed, report.totalTests)}
-                    </Group>
-                    <Group gap="md" mt="sm">
-                      <Text size="xs" c="dimmed">
-                        <Text span c="green" fw={500}>{report.passed}</Text>
-                        {report.failed > 0 && (
-                          <Text span c="red" fw={500}> / {report.failed} fail</Text>
-                        )}
-                        {report.skipped > 0 && (
-                          <Text span c="dimmed"> / {report.skipped} skip</Text>
-                        )}
-                      </Text>
-                      <Text size="xs" c="dimmed">{formatDuration(report.durationMs)}</Text>
-                      {report.branch && <Code style={{ fontSize: "var(--mantine-font-size-xs)" }}>{report.branch}</Code>}
-                      <Text size="xs" c="dimmed" ml="auto">{formatDate(report.createdAt)}</Text>
-                    </Group>
-                  </Card>
-                </Link>
-              ))}
-            </Stack>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr>
+                      <th style={th}>Report</th>
+                      <th style={th}>Project</th>
+                      <th style={th}>Status</th>
+                      <th style={th}>Tests</th>
+                      <th style={th}>Duration</th>
+                      <th style={th}>Branch</th>
+                      <th style={th}>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reports.map((r) => (
+                      <tr key={r.id} className="hoverable">
+                        <td style={td}>
+                          <Anchor href={`/reports/${r.id}`} fw={600} size="sm">
+                            {r.title}
+                          </Anchor>
+                        </td>
+                        <td style={td}>
+                          <Anchor
+                            href={`/projects/${r.project.slug}`}
+                            size="xs"
+                            c="dimmed"
+                          >
+                            {r.project.name}
+                          </Anchor>
+                        </td>
+                        <td style={td}>
+                          {statusBadge(r.passed, r.failed, r.flaky)}
+                        </td>
+                        <td style={td}>
+                          <Group gap={4} wrap="nowrap">
+                            <Text span size="sm" c="teal" fw={600}>
+                              {r.passed}
+                            </Text>
+                            {r.failed > 0 && (
+                              <Text span size="sm" c="red" fw={600}>
+                                /{r.failed}
+                              </Text>
+                            )}
+                            {r.skipped > 0 && (
+                              <Text span size="xs" c="dimmed">
+                                /{r.skipped}s
+                              </Text>
+                            )}
+                          </Group>
+                        </td>
+                        <td style={td}>
+                          <Text size="sm" c="dimmed">{fmt(r.durationMs)}</Text>
+                        </td>
+                        <td style={td}>
+                          {r.branch ? (
+                            <Code style={{ fontSize: 11, padding: "2px 6px" }}>
+                              {r.branch}
+                            </Code>
+                          ) : (
+                            <Text size="xs" c="dimmed">-</Text>
+                          )}
+                        </td>
+                        <td style={{ ...td, whiteSpace: "nowrap" }}>
+                          <Text size="xs" c="dimmed">{fmtDate(r.createdAt)}</Text>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Paper>
           </>
         )}
       </Container>
+    </div>
+  );
+}
+
+function HeroStat({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div
+      style={{
+        background: "rgba(255,255,255,0.15)",
+        borderRadius: 8,
+        padding: "14px 16px",
+        textAlign: "center",
+        backdropFilter: "blur(4px)",
+      }}
+    >
+      <Text size="xl" fw={800} c="white" lh={1.1}>
+        {value}
+      </Text>
+      <Text size="xs" c="white" style={{ opacity: 0.7 }} mt={4}>
+        {label}
+      </Text>
     </div>
   );
 }

@@ -7,8 +7,6 @@ import {
   Group,
   Badge,
   Stack,
-  Code,
-  Anchor,
 } from "@mantine/core";
 import {
   PieChart,
@@ -68,7 +66,7 @@ interface AnalyticsData {
 }
 
 const STATUS_COLORS = {
-  passed: "#40c057",
+  passed: "#12b886",
   failed: "#fa5252",
   skipped: "#868e96",
   flaky: "#fab005",
@@ -78,6 +76,82 @@ function formatDuration(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
   return `${(ms / 60000).toFixed(1)}m`;
+}
+
+function Skeleton({ height }: { height: number }) {
+  return (
+    <div
+      style={{
+        height,
+        borderRadius: 8,
+        background: "linear-gradient(90deg, #f1f3f5 25%, #e9ecef 50%, #f1f3f5 75%)",
+        backgroundSize: "200% 100%",
+        animation: "shimmer 1.5s infinite",
+      }}
+    />
+  );
+}
+
+function InsightPanel({
+  title,
+  count,
+  children,
+}: {
+  title: string;
+  count?: number;
+  children: React.ReactNode;
+}) {
+  return (
+    <Paper shadow="xs" radius="md" style={{ overflow: "hidden", background: "white" }}>
+      <div className="section-header">
+        <Group justify="space-between" align="center">
+          <Text fw={600} size="sm">{title}</Text>
+          {count !== undefined && (
+            <Text size="xs" c="dimmed">{count} total</Text>
+          )}
+        </Group>
+      </div>
+      {children}
+    </Paper>
+  );
+}
+
+function InsightRow({
+  label,
+  sublabel,
+  badge,
+  badgeColor,
+}: {
+  label: string;
+  sublabel?: string;
+  badge: string;
+  badgeColor: string;
+}) {
+  return (
+    <div
+      className="list-item-hover"
+      style={{
+        padding: "10px 16px",
+        borderBottom: "1px solid #f1f3f5",
+      }}
+    >
+      <Group justify="space-between" wrap="nowrap">
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <Text size="sm" fw={500} truncate>
+            {label}
+          </Text>
+          {sublabel && (
+            <Text size="xs" c="dimmed" truncate>
+              {sublabel}
+            </Text>
+          )}
+        </div>
+        <Badge color={badgeColor} variant="light" size="sm" style={{ flexShrink: 0 }}>
+          {badge}
+        </Badge>
+      </Group>
+    </div>
+  );
 }
 
 export function DashboardCharts() {
@@ -94,9 +168,26 @@ export function DashboardCharts() {
 
   if (loading) {
     return (
-      <Paper p="xl" ta="center">
-        <Text c="dimmed">Loading analytics...</Text>
-      </Paper>
+      <Stack gap="lg" mb="lg">
+        <style>{`
+          @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+          }
+        `}</style>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
+            gap: 16,
+          }}
+        >
+          <Paper shadow="xs" radius="md" p="md"><Skeleton height={220} /></Paper>
+          <Paper shadow="xs" radius="md" p="md"><Skeleton height={220} /></Paper>
+          <Paper shadow="xs" radius="md" p="md"><Skeleton height={220} /></Paper>
+          <Paper shadow="xs" radius="md" p="md"><Skeleton height={220} /></Paper>
+        </div>
+      </Stack>
     );
   }
 
@@ -104,7 +195,6 @@ export function DashboardCharts() {
     return null;
   }
 
-  // Status distribution from latest report
   const latest = data.trend[data.trend.length - 1];
   const pieData = [
     { name: "Passed", value: latest.passed, color: STATUS_COLORS.passed },
@@ -113,7 +203,6 @@ export function DashboardCharts() {
     { name: "Flaky", value: latest.flaky, color: STATUS_COLORS.flaky },
   ].filter((d) => d.value > 0);
 
-  // Format trend dates for display
   const trendForChart = data.trend.map((d) => ({
     ...d,
     label: new Date(d.date).toLocaleDateString("en-US", {
@@ -124,20 +213,27 @@ export function DashboardCharts() {
 
   return (
     <Stack gap="lg" mb="lg">
-      {/* Charts Row */}
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      `}</style>
+
+      {/* Charts Grid */}
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
-          gap: "var(--mantine-spacing-lg)",
+          gap: 16,
         }}
       >
-        {/* Status Distribution Pie Chart */}
-        <Paper shadow="xs" radius="md" p="md">
-          <Text fw={500} mb="sm">
-            Latest Report Status
-          </Text>
-          <div style={{ display: "flex", justifyContent: "center" }}>
+        {/* Pie Chart */}
+        <Paper shadow="xs" radius="md" style={{ overflow: "hidden", background: "white" }}>
+          <div className="section-header">
+            <Text fw={600} size="sm">Latest Report Status</Text>
+          </div>
+          <div style={{ padding: 16, display: "flex", justifyContent: "center" }}>
             <ResponsiveContainer width="100%" height={220}>
               <PieChart>
                 <Pie
@@ -160,212 +256,140 @@ export function DashboardCharts() {
         </Paper>
 
         {/* Pass Rate Trend */}
-        <Paper shadow="xs" radius="md" p="md">
-          <Text fw={500} mb="sm">
-            Pass Rate Trend
-          </Text>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={trendForChart}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" fontSize={11} />
-              <YAxis domain={[0, 100]} fontSize={11} unit="%" />
-              <Tooltip
-                formatter={(val: number) => `${val}%`}
-                labelFormatter={(l) => `Report: ${l}`}
-              />
-              <Line
-                type="monotone"
-                dataKey="passRate"
-                stroke={STATUS_COLORS.passed}
-                strokeWidth={2}
-                dot={{ r: 3 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+        <Paper shadow="xs" radius="md" style={{ overflow: "hidden", background: "white" }}>
+          <div className="section-header">
+            <Text fw={600} size="sm">Pass Rate Trend</Text>
+          </div>
+          <div style={{ padding: 16 }}>
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={trendForChart}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f3f5" />
+                <XAxis dataKey="label" fontSize={11} tick={{ fill: "#868e96" }} />
+                <YAxis domain={[0, 100]} fontSize={11} unit="%" tick={{ fill: "#868e96" }} />
+                <Tooltip
+                  formatter={(val: number) => `${val}%`}
+                  labelFormatter={(l) => `Report: ${l}`}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="passRate"
+                  stroke={STATUS_COLORS.passed}
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: STATUS_COLORS.passed }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </Paper>
 
-        {/* Test Results Stacked Bar */}
-        <Paper shadow="xs" radius="md" p="md">
-          <Text fw={500} mb="sm">
-            Test Results Over Time
-          </Text>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={trendForChart}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" fontSize={11} />
-              <YAxis fontSize={11} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="passed" stackId="a" fill={STATUS_COLORS.passed} />
-              <Bar dataKey="failed" stackId="a" fill={STATUS_COLORS.failed} />
-              <Bar dataKey="skipped" stackId="a" fill={STATUS_COLORS.skipped} />
-              <Bar dataKey="flaky" stackId="a" fill={STATUS_COLORS.flaky} />
-            </BarChart>
-          </ResponsiveContainer>
+        {/* Stacked Bar */}
+        <Paper shadow="xs" radius="md" style={{ overflow: "hidden", background: "white" }}>
+          <div className="section-header">
+            <Text fw={600} size="sm">Test Results Over Time</Text>
+          </div>
+          <div style={{ padding: 16 }}>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={trendForChart}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f3f5" />
+                <XAxis dataKey="label" fontSize={11} tick={{ fill: "#868e96" }} />
+                <YAxis fontSize={11} tick={{ fill: "#868e96" }} />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="passed" stackId="a" fill={STATUS_COLORS.passed} />
+                <Bar dataKey="failed" stackId="a" fill={STATUS_COLORS.failed} />
+                <Bar dataKey="skipped" stackId="a" fill={STATUS_COLORS.skipped} />
+                <Bar dataKey="flaky" stackId="a" fill={STATUS_COLORS.flaky} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </Paper>
 
         {/* Duration Trend */}
-        <Paper shadow="xs" radius="md" p="md">
-          <Text fw={500} mb="sm">
-            Total Duration Trend
-          </Text>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={trendForChart}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" fontSize={11} />
-              <YAxis
-                fontSize={11}
-                tickFormatter={(v) => formatDuration(v)}
-              />
-              <Tooltip
-                formatter={(val: number) => formatDuration(val)}
-                labelFormatter={(l) => `Report: ${l}`}
-              />
-              <Line
-                type="monotone"
-                dataKey="durationMs"
-                stroke="#228be6"
-                strokeWidth={2}
-                dot={{ r: 3 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+        <Paper shadow="xs" radius="md" style={{ overflow: "hidden", background: "white" }}>
+          <div className="section-header">
+            <Text fw={600} size="sm">Total Duration Trend</Text>
+          </div>
+          <div style={{ padding: 16 }}>
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={trendForChart}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f3f5" />
+                <XAxis dataKey="label" fontSize={11} tick={{ fill: "#868e96" }} />
+                <YAxis
+                  fontSize={11}
+                  tickFormatter={(v) => formatDuration(v)}
+                  tick={{ fill: "#868e96" }}
+                />
+                <Tooltip
+                  formatter={(val: number) => formatDuration(val)}
+                  labelFormatter={(l) => `Report: ${l}`}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="durationMs"
+                  stroke="#099268"
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: "#099268" }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </Paper>
       </div>
 
-      {/* Lists Row */}
+      {/* Insight Panels */}
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-          gap: "var(--mantine-spacing-lg)",
+          gap: 16,
         }}
       >
-        {/* Slowest Tests */}
         {data.slowestTests.length > 0 && (
-          <Paper shadow="xs" radius="md" style={{ overflow: "hidden" }}>
-            <div
-              style={{
-                padding: "var(--mantine-spacing-md)",
-                borderBottom: "1px solid var(--mantine-color-gray-3)",
-                backgroundColor: "var(--mantine-color-gray-0)",
-              }}
-            >
-              <Text fw={500}>Slowest Tests</Text>
-            </div>
+          <InsightPanel title="Slowest Tests" count={data.slowestTests.length}>
             <Stack gap={0}>
               {data.slowestTests.map((t, i) => (
-                <div
+                <InsightRow
                   key={i}
-                  style={{
-                    padding:
-                      "var(--mantine-spacing-sm) var(--mantine-spacing-md)",
-                    borderBottom: "1px solid var(--mantine-color-gray-2)",
-                  }}
-                >
-                  <Group justify="space-between" wrap="nowrap">
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <Text size="sm" fw={500} truncate>
-                        {t.name}
-                      </Text>
-                      {t.fileName && (
-                        <Text size="xs" c="dimmed" truncate>
-                          {t.fileName}
-                        </Text>
-                      )}
-                    </div>
-                    <Badge color="orange" variant="light" size="sm">
-                      {formatDuration(t.durationMs)}
-                    </Badge>
-                  </Group>
-                </div>
+                  label={t.name}
+                  sublabel={t.fileName || undefined}
+                  badge={formatDuration(t.durationMs)}
+                  badgeColor="orange"
+                />
               ))}
             </Stack>
-          </Paper>
+          </InsightPanel>
         )}
 
-        {/* Flaky Tests */}
         {data.flakyTests.length > 0 && (
-          <Paper shadow="xs" radius="md" style={{ overflow: "hidden" }}>
-            <div
-              style={{
-                padding: "var(--mantine-spacing-md)",
-                borderBottom: "1px solid var(--mantine-color-gray-3)",
-                backgroundColor: "var(--mantine-color-gray-0)",
-              }}
-            >
-              <Text fw={500}>Flaky Tests</Text>
-            </div>
+          <InsightPanel title="Flaky Tests" count={data.flakyTests.length}>
             <Stack gap={0}>
               {data.flakyTests.map((t, i) => (
-                <div
+                <InsightRow
                   key={i}
-                  style={{
-                    padding:
-                      "var(--mantine-spacing-sm) var(--mantine-spacing-md)",
-                    borderBottom: "1px solid var(--mantine-color-gray-2)",
-                  }}
-                >
-                  <Group justify="space-between" wrap="nowrap">
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <Text size="sm" fw={500} truncate>
-                        {t.fullName.split(" > ").pop()}
-                      </Text>
-                      {t.fileName && (
-                        <Text size="xs" c="dimmed" truncate>
-                          {t.fileName}
-                        </Text>
-                      )}
-                    </div>
-                    <Badge color="yellow" variant="light" size="sm">
-                      {t.count}x flaky
-                    </Badge>
-                  </Group>
-                </div>
+                  label={t.fullName.split(" > ").pop() || t.fullName}
+                  sublabel={t.fileName || undefined}
+                  badge={`${t.count}x flaky`}
+                  badgeColor="yellow"
+                />
               ))}
             </Stack>
-          </Paper>
+          </InsightPanel>
         )}
 
-        {/* Failure Categories */}
         {data.failureCategories.length > 0 && (
-          <Paper shadow="xs" radius="md" style={{ overflow: "hidden" }}>
-            <div
-              style={{
-                padding: "var(--mantine-spacing-md)",
-                borderBottom: "1px solid var(--mantine-color-gray-3)",
-                backgroundColor: "var(--mantine-color-gray-0)",
-              }}
-            >
-              <Text fw={500}>Failure Categories</Text>
-            </div>
+          <InsightPanel title="Failure Categories" count={data.failureCategories.length}>
             <Stack gap={0}>
               {data.failureCategories.map((c, i) => (
-                <div
+                <InsightRow
                   key={i}
-                  style={{
-                    padding:
-                      "var(--mantine-spacing-sm) var(--mantine-spacing-md)",
-                    borderBottom: "1px solid var(--mantine-color-gray-2)",
-                  }}
-                >
-                  <Group justify="space-between" wrap="nowrap">
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <Text size="sm" fw={500}>
-                        {c.category}
-                      </Text>
-                      <Text size="xs" c="dimmed" truncate>
-                        {c.tests.join(", ")}
-                      </Text>
-                    </div>
-                    <Badge color="red" variant="light" size="sm">
-                      {c.count} failures
-                    </Badge>
-                  </Group>
-                </div>
+                  label={c.category}
+                  sublabel={c.tests.join(", ")}
+                  badge={`${c.count} failures`}
+                  badgeColor="red"
+                />
               ))}
             </Stack>
-          </Paper>
+          </InsightPanel>
         )}
       </div>
     </Stack>
