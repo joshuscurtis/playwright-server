@@ -1,10 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import { getDb, schema } from "@/lib/db";
 import { getStorage } from "@/lib/storage";
 import { ingestReport } from "@/lib/reports/ingest";
 import { generateId } from "@/lib/id";
 import { eq } from "drizzle-orm";
+import { apiError, apiSuccess } from "@/lib/api";
+import { MAX_UPLOAD_BYTES } from "@/lib/constants";
 
 const uploadSchema = z.object({
   projectName: z.string().min(1),
@@ -21,16 +23,18 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
 
-    // Extract the zip file
     const file = formData.get("file");
     if (!file || !(file instanceof Blob)) {
-      return NextResponse.json(
-        { error: "Missing required 'file' field (zip file)" },
-        { status: 400 }
+      return apiError("Missing required 'file' field (zip file)", 400);
+    }
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return apiError(
+        `File too large. Maximum size is ${MAX_UPLOAD_BYTES / 1024 / 1024} MB`,
+        400
       );
     }
 
-    // Parse metadata fields
     const rawMeta: Record<string, unknown> = {};
     for (const key of uploadSchema.keyof().options) {
       const val = formData.get(key);
@@ -49,21 +53,21 @@ export async function POST(request: NextRequest) {
 
     const parsed = uploadSchema.safeParse(rawMeta);
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid metadata", details: parsed.error.flatten() },
-        { status: 400 }
-      );
+      return apiError("Invalid metadata", 400);
     }
 
     const meta = parsed.data;
     const db = getDb();
     const storage = getStorage();
 
-    // Ensure project exists (upsert by slug)
     const slug = meta.projectName
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-|-$/g, "");
+
+    if (!slug) {
+      return apiError("Project name must contain at least one alphanumeric character", 400);
+    }
 
     let project = await db.query.projects.findFirst({
       where: eq(schema.projects.slug, slug),
@@ -82,7 +86,6 @@ export async function POST(request: NextRequest) {
       project = newProject;
     }
 
-    // Ingest the report zip
     const zipBuffer = Buffer.from(await file.arrayBuffer());
     const ingestResult = await ingestReport(zipBuffer, project.id, storage);
 
@@ -90,7 +93,6 @@ export async function POST(request: NextRequest) {
       meta.title ||
       `Report ${new Date().toISOString().slice(0, 16).replace("T", " ")}`;
 
-    // Insert report record
     await db.insert(schema.reports).values({
       id: ingestResult.reportId,
       projectId: project.id,
@@ -110,7 +112,6 @@ export async function POST(request: NextRequest) {
       metadata: meta.metadata,
     });
 
-    // Insert trace records
     for (const trace of ingestResult.traces) {
       await db.insert(schema.traces).values({
         id: generateId("trc"),
@@ -122,7 +123,6 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Insert individual test results
     for (const tr of ingestResult.testResults) {
       await db.insert(schema.testResults).values({
         id: generateId("tst"),
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({
+    return apiSuccess({
       id: ingestResult.reportId,
       projectId: project.id,
       projectSlug: project.slug,
@@ -154,9 +154,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error) {
     console.error("Upload error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return apiError("Internal server error", 500);
   }
 }

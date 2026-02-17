@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getDb, schema } from "@/lib/db";
 import { getStorage } from "@/lib/storage";
 import { eq } from "drizzle-orm";
+import { apiError, apiSuccess } from "@/lib/api";
+import type { DrizzleReportWithProject, DrizzleTrace } from "@/lib/types";
 
 export async function GET(
   _request: NextRequest,
@@ -11,16 +13,16 @@ export async function GET(
     const { id } = await params;
     const db = getDb();
 
-    const report = await db.query.reports.findFirst({
+    const report = (await db.query.reports.findFirst({
       where: eq(schema.reports.id, id),
       with: { project: true, traces: true },
-    });
+    })) as (DrizzleReportWithProject & { traces: DrizzleTrace[] }) | undefined;
 
     if (!report) {
-      return NextResponse.json({ error: "Report not found" }, { status: 404 });
+      return apiError("Report not found", 404);
     }
 
-    return NextResponse.json({
+    return apiSuccess({
       id: report.id,
       title: report.title,
       project: {
@@ -41,7 +43,7 @@ export async function GET(
       buildUrl: report.buildUrl,
       metadata: report.metadata,
       createdAt: report.createdAt,
-      traces: report.traces.map((t: any) => ({
+      traces: report.traces.map((t: DrizzleTrace) => ({
         id: t.id,
         testName: t.testName,
         testFile: t.testFile,
@@ -51,10 +53,7 @@ export async function GET(
     });
   } catch (error) {
     console.error("Get report error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return apiError("Internal server error", 500);
   }
 }
 
@@ -72,21 +71,15 @@ export async function DELETE(
     });
 
     if (!report) {
-      return NextResponse.json({ error: "Report not found" }, { status: 404 });
+      return apiError("Report not found", 404);
     }
 
-    // Delete files from storage
     await storage.deletePrefix(report.storagePath);
-
-    // Delete from database (cascade deletes traces)
     await db.delete(schema.reports).where(eq(schema.reports.id, id));
 
-    return NextResponse.json({ deleted: true });
+    return apiSuccess({ deleted: true });
   } catch (error) {
     console.error("Delete report error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return apiError("Internal server error", 500);
   }
 }

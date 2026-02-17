@@ -23,6 +23,8 @@ import {
   Bar,
   Legend,
 } from "recharts";
+import { formatDuration } from "@/lib/format";
+import { STATUS_COLORS } from "@/lib/theme";
 
 interface TrendData {
   reportId: string;
@@ -65,17 +67,9 @@ interface AnalyticsData {
   failureCategories: FailureCategory[];
 }
 
-const STATUS_COLORS = {
-  passed: "#12b886",
-  failed: "#fa5252",
-  skipped: "#868e96",
-  flaky: "#fab005",
-};
-
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${(ms / 60000).toFixed(1)}m`;
+interface PieLabelProps {
+  name: string;
+  value: number;
 }
 
 function Skeleton({ height }: { height: number }) {
@@ -243,7 +237,7 @@ export function DashboardCharts() {
                   innerRadius={50}
                   outerRadius={80}
                   dataKey="value"
-                  label={({ name, value }: any) => `${name}: ${value}`}
+                  label={({ name, value }: PieLabelProps) => `${name}: ${value}`}
                 >
                   {pieData.map((entry, i) => (
                     <Cell key={i} fill={entry.color} />

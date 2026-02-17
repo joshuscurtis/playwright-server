@@ -59,6 +59,7 @@ export const reports = pgTable(
     index("reports_project_id_idx").on(table.projectId),
     index("reports_created_at_idx").on(table.createdAt),
     index("reports_branch_idx").on(table.branch),
+    index("reports_project_created_idx").on(table.projectId, table.createdAt),
   ]
 );
 
@@ -107,8 +108,8 @@ export const testResults = pgTable(
     errorStack: text("error_stack"),
 
     // Categorization
-    category: text("category"), // product_defect, test_defect, etc.
-    severity: text("severity"), // blocker, critical, normal, minor, trivial
+    category: text("category"),
+    severity: text("severity"),
 
     // Extra data
     tags: jsonb("tags").$type<string[]>(),
@@ -123,6 +124,8 @@ export const testResults = pgTable(
     index("test_results_project_id_idx").on(table.projectId),
     index("test_results_full_name_idx").on(table.fullName),
     index("test_results_status_idx").on(table.status),
+    index("test_results_status_created_idx").on(table.status, table.createdAt),
+    index("test_results_project_fullname_idx").on(table.projectId, table.fullName),
   ]
 );
 

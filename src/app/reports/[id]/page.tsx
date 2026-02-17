@@ -12,51 +12,25 @@ import {
   Code,
   Group,
   Stack,
-  Badge,
 } from "@mantine/core";
 import { TestResultsTable } from "@/app/components/TestResultsTable";
-
-interface ReportDetail {
-  id: string;
-  title: string;
-  project: { id: string; name: string; slug: string };
-  storagePath: string;
-  totalTests: number;
-  passed: number;
-  failed: number;
-  skipped: number;
-  flaky: number;
-  durationMs: number;
-  branch: string | null;
-  commitSha: string | null;
-  commitMessage: string | null;
-  ciProvider: string | null;
-  buildUrl: string | null;
-  createdAt: Date;
-  traces: { id: string; testName: string; testFile: string; sizeBytes: number }[];
-  testResults: {
-    id: string;
-    name: string;
-    fullName: string;
-    suiteName: string | null;
-    fileName: string | null;
-    status: string;
-    durationMs: number;
-    retries: number;
-    errorMessage: string | null;
-    errorStack: string | null;
-    tags: string[] | null;
-    projectId: string;
-  }[];
-}
+import { HeroStat } from "@/app/components/HeroStat";
+import { formatDuration } from "@/lib/format";
+import { heroGradient } from "@/lib/theme";
+import type {
+  ReportDetail,
+  DrizzleReportFull,
+  DrizzleTrace,
+  DrizzleTestResult,
+} from "@/lib/types";
 
 async function getReport(id: string): Promise<ReportDetail | null> {
   try {
     const db = getDb();
-    const report = await db.query.reports.findFirst({
+    const report = (await db.query.reports.findFirst({
       where: eq(schema.reports.id, id),
       with: { project: true, traces: true, testResults: true },
-    });
+    })) as DrizzleReportFull | undefined;
     if (!report) return null;
     return {
       id: report.id,
@@ -75,13 +49,13 @@ async function getReport(id: string): Promise<ReportDetail | null> {
       ciProvider: report.ciProvider,
       buildUrl: report.buildUrl,
       createdAt: report.createdAt,
-      traces: report.traces.map((t: any) => ({
+      traces: report.traces.map((t: DrizzleTrace) => ({
         id: t.id,
         testName: t.testName,
         testFile: t.testFile,
         sizeBytes: t.sizeBytes,
       })),
-      testResults: (report.testResults || []).map((t: any) => ({
+      testResults: (report.testResults || []).map((t: DrizzleTestResult) => ({
         id: t.id,
         name: t.name,
         fullName: t.fullName,
@@ -102,12 +76,6 @@ async function getReport(id: string): Promise<ReportDetail | null> {
   }
 }
 
-function fmt(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${(ms / 60000).toFixed(1)}m`;
-}
-
 export default async function ReportPage({
   params,
 }: {
@@ -122,8 +90,6 @@ export default async function ReportPage({
     try {
       const storage = getStorage();
       const files = await storage.list(report.storagePath);
-      // Real Playwright HTML reports have JS bundles, CSS, app/ directory, etc.
-      // Minimal/synthetic reports only have index.html + report.json
       hasRichHtmlReport = files.some(
         (f) => f.endsWith(".js") || f.endsWith(".css") || f.includes("/app/")
       );
@@ -150,12 +116,7 @@ export default async function ReportPage({
   return (
     <div style={{ minHeight: "calc(100vh - 56px)", backgroundColor: "#f8f9fa" }}>
       {/* Hero Header */}
-      <div
-        style={{
-          background: "linear-gradient(135deg, #087f5b 0%, #099268 50%, #0ca678 100%)",
-          color: "white",
-        }}
-      >
+      <div style={{ background: heroGradient, color: "white" }}>
         <Container size="xl" py="xl">
           <Breadcrumbs
             mb="sm"
@@ -207,7 +168,7 @@ export default async function ReportPage({
             <HeroStat label="Failed" value={report.failed} />
             <HeroStat label="Skipped" value={report.skipped} />
             <HeroStat label="Flaky" value={report.flaky} />
-            <HeroStat label="Duration" value={fmt(report.durationMs)} />
+            <HeroStat label="Duration" value={formatDuration(report.durationMs)} />
           </div>
         </Container>
       </div>
@@ -279,27 +240,6 @@ export default async function ReportPage({
           </Paper>
         )}
       </Container>
-    </div>
-  );
-}
-
-function HeroStat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div
-      style={{
-        background: "rgba(255,255,255,0.15)",
-        borderRadius: 8,
-        padding: "14px 16px",
-        textAlign: "center",
-        backdropFilter: "blur(4px)",
-      }}
-    >
-      <Text size="xl" fw={800} c="white" lh={1.1}>
-        {value}
-      </Text>
-      <Text size="xs" c="white" style={{ opacity: 0.7 }} mt={4}>
-        {label}
-      </Text>
     </div>
   );
 }

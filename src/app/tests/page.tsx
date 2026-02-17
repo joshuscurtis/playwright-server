@@ -10,26 +10,19 @@ import {
   Badge,
   Code,
   Group,
-  Stack,
 } from "@mantine/core";
 import { TestHistoryCharts } from "@/app/components/TestHistoryCharts";
+import { HeroStat } from "@/app/components/HeroStat";
+import { formatDuration, formatDate } from "@/lib/format";
+import {
+  STATUS_BADGE_COLORS,
+  tableHeaderStyle as th,
+  tableCellStyle as td,
+  heroGradient,
+} from "@/lib/theme";
+import type { HistoryEntry, DrizzleTestResultWithReport } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
-
-interface HistoryEntry {
-  id: string;
-  status: string;
-  durationMs: number;
-  retries: number;
-  errorMessage: string | null;
-  createdAt: string;
-  report: {
-    id: string;
-    title: string;
-    branch: string | null;
-    commitSha: string | null;
-  };
-}
 
 async function getTestHistory(
   fullName: string,
@@ -46,7 +39,7 @@ async function getTestHistory(
       orderBy: [desc(schema.testResults.createdAt)],
       limit: 50,
     });
-    return results.map((r: any) => ({
+    return (results as DrizzleTestResultWithReport[]).map((r) => ({
       id: r.id,
       status: r.status,
       durationMs: r.durationMs,
@@ -65,38 +58,6 @@ async function getTestHistory(
     return [];
   }
 }
-
-const statusColors: Record<string, string> = {
-  passed: "teal",
-  failed: "red",
-  skipped: "gray",
-  flaky: "yellow",
-};
-
-function fmt(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${(ms / 60000).toFixed(1)}m`;
-}
-
-const th: React.CSSProperties = {
-  padding: "10px 16px",
-  textAlign: "left",
-  fontWeight: 600,
-  fontSize: 11,
-  color: "#868e96",
-  textTransform: "uppercase",
-  letterSpacing: "0.05em",
-  borderBottom: "2px solid #e9ecef",
-  background: "white",
-  whiteSpace: "nowrap",
-};
-
-const td: React.CSSProperties = {
-  padding: "12px 16px",
-  borderBottom: "1px solid #f1f3f5",
-  verticalAlign: "middle",
-};
 
 export default async function TestHistoryPage({
   searchParams,
@@ -146,12 +107,7 @@ export default async function TestHistoryPage({
   return (
     <div style={{ minHeight: "calc(100vh - 56px)", backgroundColor: "#f8f9fa" }}>
       {/* Hero */}
-      <div
-        style={{
-          background: "linear-gradient(135deg, #087f5b 0%, #099268 50%, #0ca678 100%)",
-          color: "white",
-        }}
-      >
+      <div style={{ background: heroGradient, color: "white" }}>
         <Container size="xl" py="xl">
           <Breadcrumbs
             mb="sm"
@@ -176,7 +132,7 @@ export default async function TestHistoryPage({
             <HeroStat label="Total Runs" value={totalRuns} />
             <HeroStat label="Pass Rate" value={`${passRate}%`} />
             <HeroStat label="Flakiness" value={`${flakinessScore}%`} />
-            <HeroStat label="Avg Duration" value={fmt(avgDuration)} />
+            <HeroStat label="Avg Duration" value={formatDuration(avgDuration)} />
           </div>
         </Container>
       </div>
@@ -218,7 +174,7 @@ export default async function TestHistoryPage({
                     <tr key={h.id} className="hoverable">
                       <td style={td}>
                         <Badge
-                          color={statusColors[h.status] || "gray"}
+                          color={STATUS_BADGE_COLORS[h.status] || "gray"}
                           variant="light"
                           size="sm"
                         >
@@ -238,7 +194,7 @@ export default async function TestHistoryPage({
                         )}
                       </td>
                       <td style={td}>
-                        <Text size="sm" ff="monospace" c="dimmed">{fmt(h.durationMs)}</Text>
+                        <Text size="sm" ff="monospace" c="dimmed">{formatDuration(h.durationMs)}</Text>
                       </td>
                       <td style={td}>
                         {h.retries > 0 ? (
@@ -251,12 +207,7 @@ export default async function TestHistoryPage({
                       </td>
                       <td style={{ ...td, whiteSpace: "nowrap" }}>
                         <Text size="xs" c="dimmed">
-                          {new Date(h.createdAt).toLocaleString("en-US", {
-                            month: "short",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                          {formatDate(h.createdAt)}
                         </Text>
                       </td>
                     </tr>
@@ -267,27 +218,6 @@ export default async function TestHistoryPage({
           )}
         </Paper>
       </Container>
-    </div>
-  );
-}
-
-function HeroStat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div
-      style={{
-        background: "rgba(255,255,255,0.15)",
-        borderRadius: 8,
-        padding: "14px 16px",
-        textAlign: "center",
-        backdropFilter: "blur(4px)",
-      }}
-    >
-      <Text size="xl" fw={800} c="white" lh={1.1}>
-        {value}
-      </Text>
-      <Text size="xs" c="white" style={{ opacity: 0.7 }} mt={4}>
-        {label}
-      </Text>
     </div>
   );
 }

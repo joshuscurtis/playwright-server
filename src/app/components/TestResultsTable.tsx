@@ -11,24 +11,12 @@ import {
   Stack,
   Anchor,
 } from "@mantine/core";
-
-interface TestResult {
-  id: string;
-  name: string;
-  fullName: string;
-  suiteName: string | null;
-  fileName: string | null;
-  status: string;
-  durationMs: number;
-  retries: number;
-  errorMessage: string | null;
-  errorStack: string | null;
-  tags: string[] | null;
-  projectId: string;
-}
+import { formatDuration } from "@/lib/format";
+import { STATUS_BADGE_COLORS, sortableHeaderStyle as th, tableCellStyle as td } from "@/lib/theme";
+import type { TestResultRow } from "@/lib/types";
 
 interface Props {
-  testResults: TestResult[];
+  testResults: TestResultRow[];
   projectId: string;
 }
 
@@ -36,45 +24,11 @@ type StatusFilter = "all" | "passed" | "failed" | "skipped" | "flaky";
 type SortKey = "name" | "status" | "duration" | "file";
 type SortDir = "asc" | "desc";
 
-const statusColors: Record<string, string> = {
-  passed: "teal",
-  failed: "red",
-  skipped: "gray",
-  flaky: "yellow",
-};
-
 const statusOrder: Record<string, number> = {
   failed: 0,
   flaky: 1,
   passed: 2,
   skipped: 3,
-};
-
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${(ms / 60000).toFixed(1)}m`;
-}
-
-const th: React.CSSProperties = {
-  padding: "10px 16px",
-  textAlign: "left",
-  fontWeight: 600,
-  fontSize: 11,
-  color: "#868e96",
-  textTransform: "uppercase",
-  letterSpacing: "0.05em",
-  borderBottom: "2px solid #e9ecef",
-  background: "white",
-  whiteSpace: "nowrap",
-  cursor: "pointer",
-  userSelect: "none",
-};
-
-const td: React.CSSProperties = {
-  padding: "12px 16px",
-  borderBottom: "1px solid #f1f3f5",
-  verticalAlign: "middle",
 };
 
 export function TestResultsTable({ testResults, projectId }: Props) {
@@ -212,7 +166,7 @@ export function TestResultsTable({ testResults, projectId }: Props) {
                   >
                     <td style={td}>
                       <Badge
-                        color={statusColors[t.status] || "gray"}
+                        color={STATUS_BADGE_COLORS[t.status] || "gray"}
                         variant="light"
                         size="sm"
                       >

@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getDb, schema } from "@/lib/db";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
+import { apiError, apiSuccess } from "@/lib/api";
+import { API_DEFAULTS } from "@/lib/constants";
+import type { DrizzleReportWithProject, DrizzleTestResult } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
   try {
@@ -8,23 +11,21 @@ export async function GET(request: NextRequest) {
     const projectId = searchParams.get("projectId");
     const db = getDb();
 
-    // Get recent reports for trend data
     const reportsQuery = projectId
       ? db.query.reports.findMany({
           where: eq(schema.reports.projectId, projectId),
           orderBy: [desc(schema.reports.createdAt)],
-          limit: 20,
+          limit: API_DEFAULTS.ANALYTICS_TREND_LIMIT,
         })
       : db.query.reports.findMany({
           orderBy: [desc(schema.reports.createdAt)],
-          limit: 20,
+          limit: API_DEFAULTS.ANALYTICS_TREND_LIMIT,
         });
 
     const reports = await reportsQuery;
 
-    // Trend data (pass rate over time) - reversed to show oldest first
     const trend = reports
-      .map((r: any) => ({
+      .map((r: typeof reports[number]) => ({
         reportId: r.id,
         title: r.title,
         date: r.createdAt,
@@ -41,22 +42,19 @@ export async function GET(request: NextRequest) {
       }))
       .reverse();
 
-    // Get slowest tests from recent reports
     const slowestTests = await db.query.testResults.findMany({
       orderBy: [desc(schema.testResults.durationMs)],
-      limit: 10,
+      limit: API_DEFAULTS.ANALYTICS_SLOWEST_LIMIT,
     });
 
-    // Get flaky tests (tests with status "flaky" in recent runs)
     const flakyTests = await db.query.testResults.findMany({
       where: eq(schema.testResults.status, "flaky"),
       orderBy: [desc(schema.testResults.createdAt)],
-      limit: 20,
+      limit: API_DEFAULTS.ANALYTICS_FLAKY_SCAN,
     });
 
-    // Deduplicate flaky tests by fullName, counting occurrences
     const flakyMap = new Map<string, { fullName: string; fileName: string | null; count: number; lastSeen: Date }>();
-    for (const t of flakyTests as any[]) {
+    for (const t of flakyTests as DrizzleTestResult[]) {
       const existing = flakyMap.get(t.fullName);
       if (existing) {
         existing.count++;
@@ -70,28 +68,29 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get failure categories
     const failedTests = await db.query.testResults.findMany({
       where: eq(schema.testResults.status, "failed"),
       orderBy: [desc(schema.testResults.createdAt)],
-      limit: 50,
+      limit: API_DEFAULTS.ANALYTICS_FAILURE_SCAN,
     });
 
     const categoryMap = new Map<string, { category: string; count: number; tests: string[] }>();
-    for (const t of failedTests as any[]) {
+    for (const t of failedTests as DrizzleTestResult[]) {
       const category = categorizeError(t.errorMessage);
       const existing = categoryMap.get(category);
       if (existing) {
         existing.count++;
-        if (existing.tests.length < 3) existing.tests.push(t.name);
+        if (existing.tests.length < API_DEFAULTS.ANALYTICS_CATEGORY_SAMPLE) {
+          existing.tests.push(t.name);
+        }
       } else {
         categoryMap.set(category, { category, count: 1, tests: [t.name] });
       }
     }
 
-    return NextResponse.json({
+    return apiSuccess({
       trend,
-      slowestTests: (slowestTests as any[]).map((t) => ({
+      slowestTests: (slowestTests as DrizzleTestResult[]).map((t) => ({
         name: t.name,
         fullName: t.fullName,
         fileName: t.fileName,
@@ -107,10 +106,7 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Analytics error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return apiError("Internal server error", 500);
   }
 }
 

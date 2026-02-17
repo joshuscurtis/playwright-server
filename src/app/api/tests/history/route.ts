@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getDb, schema } from "@/lib/db";
 import { eq, and, desc } from "drizzle-orm";
+import { apiError, apiSuccess } from "@/lib/api";
+import { API_DEFAULTS } from "@/lib/constants";
+import type { DrizzleTestResultWithReport } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,10 +12,7 @@ export async function GET(request: NextRequest) {
     const projectId = searchParams.get("projectId");
 
     if (!fullName || !projectId) {
-      return NextResponse.json(
-        { error: "fullName and projectId are required" },
-        { status: 400 }
-      );
+      return apiError("fullName and projectId are required", 400);
     }
 
     const db = getDb();
@@ -24,11 +24,11 @@ export async function GET(request: NextRequest) {
       ),
       with: { report: true },
       orderBy: [desc(schema.testResults.createdAt)],
-      limit: 50,
+      limit: API_DEFAULTS.PAGE_LIMIT,
     });
 
-    return NextResponse.json(
-      history.map((h: any) => ({
+    return apiSuccess(
+      (history as DrizzleTestResultWithReport[]).map((h) => ({
         id: h.id,
         status: h.status,
         durationMs: h.durationMs,
@@ -45,9 +45,6 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error("Failed to load test history:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return apiError("Internal server error", 500);
   }
 }

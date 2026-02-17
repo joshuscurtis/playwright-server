@@ -13,25 +13,14 @@ import {
   Bar,
   Cell,
 } from "recharts";
+import { formatDuration } from "@/lib/format";
+import { STATUS_COLORS } from "@/lib/theme";
 
 interface ChartEntry {
   date: string;
   durationMs: number;
   status: string;
   reportTitle: string;
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  passed: "#12b886",
-  failed: "#fa5252",
-  skipped: "#868e96",
-  flaky: "#fab005",
-};
-
-function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
-  return `${(ms / 60000).toFixed(1)}m`;
 }
 
 export function TestHistoryCharts({ data }: { data: ChartEntry[] }) {

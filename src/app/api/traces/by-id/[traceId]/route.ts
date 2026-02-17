@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb, schema } from "@/lib/db";
 import { getStorage } from "@/lib/storage";
 import { eq } from "drizzle-orm";
+import { apiError, assetHeaders } from "@/lib/api";
 
 export async function GET(
   _request: NextRequest,
@@ -17,28 +18,17 @@ export async function GET(
     });
 
     if (!trace) {
-      return NextResponse.json(
-        { error: "Trace not found" },
-        { status: 404 }
-      );
+      return apiError("Trace not found", 404);
     }
 
     const data = await storage.get(trace.storagePath);
     const fileName = trace.testName.split("/").pop() || "trace.zip";
 
     return new NextResponse(new Uint8Array(data), {
-      headers: {
-        "Content-Type": "application/zip",
-        "Content-Disposition": `inline; filename="${fileName}"`,
-        "Cache-Control": "public, max-age=31536000, immutable",
-        "Access-Control-Allow-Origin": "*",
-      },
+      headers: assetHeaders("application/zip", fileName),
     });
   } catch (error) {
     console.error("Serve trace error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return apiError("Internal server error", 500);
   }
 }

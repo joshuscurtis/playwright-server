@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getDb, schema } from "@/lib/db";
 import { eq } from "drizzle-orm";
+import { apiError, apiSuccess } from "@/lib/api";
 
 export async function GET(
   _request: NextRequest,
@@ -14,12 +15,9 @@ export async function GET(
       where: eq(schema.testResults.reportId, id),
     });
 
-    return NextResponse.json(testResults);
+    return apiSuccess(testResults);
   } catch (error) {
     console.error("Failed to load test results:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return apiError("Internal server error", 500);
   }
 }

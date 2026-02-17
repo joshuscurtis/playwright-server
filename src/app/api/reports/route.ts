@@ -1,6 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getDb, schema } from "@/lib/db";
 import { desc, eq, and, ilike } from "drizzle-orm";
+import { apiError, apiSuccess, mapReportToResponse } from "@/lib/api";
+import { API_DEFAULTS } from "@/lib/constants";
+import type { DrizzleReportWithProject } from "@/lib/types";
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,20 +13,22 @@ export async function GET(request: NextRequest) {
     const projectSlug = searchParams.get("project");
     const branch = searchParams.get("branch");
     const search = searchParams.get("search");
-    const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 100);
+    const limit = Math.min(
+      parseInt(searchParams.get("limit") || String(API_DEFAULTS.PAGE_LIMIT)),
+      API_DEFAULTS.PAGE_MAX
+    );
     const offset = parseInt(searchParams.get("offset") || "0");
 
     const conditions = [];
 
     if (projectSlug) {
-      // Find project by slug first
       const project = await db.query.projects.findFirst({
         where: eq(schema.projects.slug, projectSlug),
       });
       if (project) {
         conditions.push(eq(schema.reports.projectId, project.id));
       } else {
-        return NextResponse.json({ reports: [], total: 0 });
+        return apiSuccess({ reports: [], total: 0 });
       }
     }
 
@@ -45,29 +50,14 @@ export async function GET(request: NextRequest) {
       offset,
     });
 
-    return NextResponse.json({
-      reports: reports.map((r: any) => ({
-        id: r.id,
-        title: r.title,
-        project: { id: r.project.id, name: r.project.name, slug: r.project.slug },
-        totalTests: r.totalTests,
-        passed: r.passed,
-        failed: r.failed,
-        skipped: r.skipped,
-        flaky: r.flaky,
-        durationMs: r.durationMs,
-        branch: r.branch,
-        commitSha: r.commitSha,
-        ciProvider: r.ciProvider,
-        createdAt: r.createdAt,
+    return apiSuccess({
+      reports: (reports as DrizzleReportWithProject[]).map((r) => ({
+        ...mapReportToResponse(r),
         url: `/reports/${r.id}`,
       })),
     });
   } catch (error) {
     console.error("List reports error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return apiError("Internal server error", 500);
   }
 }

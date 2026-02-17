@@ -3,6 +3,8 @@ import { getDb, schema } from "@/lib/db";
 import { getStorage } from "@/lib/storage";
 import { eq } from "drizzle-orm";
 import mime from "mime-types";
+import { apiError, isSafePath } from "@/lib/api";
+import { CACHE, SECURITY_HEADERS } from "@/lib/constants";
 
 export async function GET(
   _request: NextRequest,
@@ -18,21 +20,20 @@ export async function GET(
     });
 
     if (!report) {
-      return NextResponse.json({ error: "Report not found" }, { status: 404 });
+      return apiError("Report not found", 404);
     }
 
     const filePath = pathSegments.join("/");
 
-    // Prevent path traversal
-    if (filePath.includes("..")) {
-      return NextResponse.json({ error: "Invalid path" }, { status: 400 });
+    if (!isSafePath(filePath)) {
+      return apiError("Invalid path", 400);
     }
 
     const storageKey = `${report.storagePath}/${filePath}`;
 
     const exists = await storage.exists(storageKey);
     if (!exists) {
-      return NextResponse.json({ error: "File not found" }, { status: 404 });
+      return apiError("File not found", 404);
     }
 
     const data = await storage.get(storageKey);
@@ -42,14 +43,12 @@ export async function GET(
     return new NextResponse(new Uint8Array(data), {
       headers: {
         "Content-Type": contentType,
-        "Cache-Control": "public, max-age=31536000, immutable",
+        "Cache-Control": CACHE.IMMUTABLE,
+        ...SECURITY_HEADERS,
       },
     });
   } catch (error) {
     console.error("Serve file error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return apiError("Internal server error", 500);
   }
 }

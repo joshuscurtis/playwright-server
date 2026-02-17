@@ -173,10 +173,34 @@ function extractSummaryFromJson(json: unknown): ResultSummary | null {
   return null;
 }
 
+// Playwright JSON report type shapes
+interface PlaywrightSuite {
+  title?: string;
+  file?: string;
+  specs?: PlaywrightSpec[];
+  suites?: PlaywrightSuite[];
+}
+
+interface PlaywrightSpec {
+  title?: string;
+  tags?: string[];
+  tests?: PlaywrightTest[];
+}
+
+interface PlaywrightTest {
+  annotations?: { type: string }[];
+  results?: PlaywrightTestResult[];
+}
+
+interface PlaywrightTestResult {
+  status?: string;
+  duration?: number;
+  error?: { message?: string; stack?: string };
+}
+
 /**
  * Extract individual test results from Playwright JSON report.
  * Playwright JSON format: { suites: [{ title, file, suites, specs }] }
- * Each spec has: { title, ok, tests: [{ expectedStatus, results: [{ status, duration, error }] }] }
  */
 function extractTestResults(json: unknown): TestResultData[] {
   if (!json || typeof json !== "object") return [];
@@ -184,14 +208,14 @@ function extractTestResults(json: unknown): TestResultData[] {
   if (!Array.isArray(obj.suites)) return [];
 
   const results: TestResultData[] = [];
-  for (const suite of obj.suites) {
+  for (const suite of obj.suites as PlaywrightSuite[]) {
     extractFromSuite(suite, [], results);
   }
   return results;
 }
 
 function extractFromSuite(
-  suite: any,
+  suite: PlaywrightSuite,
   parentSuites: string[],
   results: TestResultData[],
   parentFile?: string | null
@@ -203,14 +227,12 @@ function extractFromSuite(
 
   const fileName = suite.file || parentFile || null;
 
-  // Process specs in this suite
   if (Array.isArray(suite.specs)) {
     for (const spec of suite.specs) {
       extractFromSpec(spec, suitePath, fileName, results);
     }
   }
 
-  // Recurse into nested suites, passing file name down
   if (Array.isArray(suite.suites)) {
     for (const child of suite.suites) {
       extractFromSuite(child, suitePath, results, fileName);
@@ -219,7 +241,7 @@ function extractFromSuite(
 }
 
 function extractFromSpec(
-  spec: any,
+  spec: PlaywrightSpec,
   suitePath: string[],
   fileName: string | null,
   results: TestResultData[]
@@ -234,7 +256,6 @@ function extractFromSpec(
     const testResults = test.results;
     const lastResult = testResults[testResults.length - 1];
 
-    // Determine final status
     let status: TestResultData["status"];
     const retries = testResults.length - 1;
 
@@ -251,17 +272,15 @@ function extractFromSpec(
       status = "failed";
     }
 
-    // Sum duration across all retries
     const durationMs = testResults.reduce(
-      (sum: number, r: any) => sum + (r.duration || 0),
+      (sum: number, r: PlaywrightTestResult) => sum + (r.duration || 0),
       0
     );
 
-    // Extract error from the last failure
     let errorMessage: string | null = null;
     let errorStack: string | null = null;
     const failedResult = testResults.find(
-      (r: any) =>
+      (r: PlaywrightTestResult) =>
         r.status === "failed" ||
         r.status === "timedOut" ||
         r.status === "unexpected"
@@ -271,7 +290,6 @@ function extractFromSpec(
       errorStack = failedResult.error.stack || null;
     }
 
-    // Extract tags from annotations
     const tags: string[] = [];
     if (Array.isArray(spec.tags)) {
       tags.push(...spec.tags);
