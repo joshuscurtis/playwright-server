@@ -2,6 +2,8 @@ import { Readable } from "stream";
 import { neon } from "@neondatabase/serverless";
 import { StorageProvider } from "./types";
 
+type Row = Record<string, unknown>;
+
 /**
  * Stores files as bytea rows in PostgreSQL.
  * Designed for Vercel/Neon where the local filesystem is ephemeral.
@@ -33,9 +35,9 @@ export class PgStorageProvider implements StorageProvider {
   }
 
   async get(key: string): Promise<Buffer> {
-    const rows = await this.sql`
+    const rows = (await this.sql`
       SELECT data FROM storage_files WHERE key = ${key}
-    `;
+    `) as Row[];
     if (rows.length === 0) {
       throw new Error(`File not found: ${key}`);
     }
@@ -66,16 +68,16 @@ export class PgStorageProvider implements StorageProvider {
   }
 
   async exists(key: string): Promise<boolean> {
-    const rows = await this.sql`
+    const rows = (await this.sql`
       SELECT 1 FROM storage_files WHERE key = ${key} LIMIT 1
-    `;
+    `) as Row[];
     return rows.length > 0;
   }
 
   async list(prefix: string): Promise<string[]> {
-    const rows = await this.sql`
+    const rows = (await this.sql`
       SELECT key FROM storage_files WHERE key LIKE ${prefix + "%"} ORDER BY key
-    `;
-    return rows.map((r: any) => r.key);
+    `) as Row[];
+    return rows.map((r) => r.key as string);
   }
 }
