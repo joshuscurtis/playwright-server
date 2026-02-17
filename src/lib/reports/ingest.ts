@@ -127,21 +127,27 @@ interface ParsedReport {
 async function parseReportData(extractDir: string): Promise<ParsedReport> {
   const possiblePaths = ["report.json", "data/report.json"];
 
+  let bestSummary: ResultSummary | null = null;
+  let bestTestResults: TestResultData[] = [];
+
   for (const p of possiblePaths) {
     try {
       const data = await fs.readFile(path.join(extractDir, p), "utf-8");
       const json = JSON.parse(data);
       const summary = extractSummaryFromJson(json);
       const testResults = extractTestResults(json);
-      if (testResults.length > 0) {
-        return { summary, testResults };
+
+      if (summary) bestSummary = summary;
+      if (testResults.length > bestTestResults.length) {
+        bestTestResults = testResults;
       }
+      if (bestSummary && bestTestResults.length > 0) break;
     } catch {
       continue;
     }
   }
 
-  return { summary: null, testResults: [] };
+  return { summary: bestSummary, testResults: bestTestResults };
 }
 
 function extractSummaryFromJson(json: unknown): ResultSummary | null {
@@ -187,24 +193,27 @@ function extractTestResults(json: unknown): TestResultData[] {
 function extractFromSuite(
   suite: any,
   parentSuites: string[],
-  results: TestResultData[]
+  results: TestResultData[],
+  parentFile?: string | null
 ): void {
   if (!suite || typeof suite !== "object") return;
 
   const suitePath = [...parentSuites];
   if (suite.title) suitePath.push(suite.title);
 
+  const fileName = suite.file || parentFile || null;
+
   // Process specs in this suite
   if (Array.isArray(suite.specs)) {
     for (const spec of suite.specs) {
-      extractFromSpec(spec, suitePath, suite.file || null, results);
+      extractFromSpec(spec, suitePath, fileName, results);
     }
   }
 
-  // Recurse into nested suites
+  // Recurse into nested suites, passing file name down
   if (Array.isArray(suite.suites)) {
     for (const child of suite.suites) {
-      extractFromSuite(child, suitePath, results);
+      extractFromSuite(child, suitePath, results, fileName);
     }
   }
 }
