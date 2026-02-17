@@ -12,7 +12,6 @@ import {
   Code,
   Group,
   Stack,
-  Badge,
 } from "@mantine/core";
 
 interface ReportDetail {
@@ -89,15 +88,15 @@ export default async function ReportPage({
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ textAlign: "center" }}>
           <Title order={2} mb="xs">Report not found</Title>
-          <Anchor component={Link} href="/">&larr; Back to dashboard</Anchor>
+          <Anchor href="/">&larr; Back to dashboard</Anchor>
         </div>
       </div>
     );
   }
 
   const breadcrumbItems = [
-    <Anchor component={Link} href="/" key="dash" size="sm">Dashboard</Anchor>,
-    <Anchor component={Link} href={`/projects/${report.project.slug}`} key="proj" size="sm">
+    <Anchor href="/" key="dash" size="sm">Dashboard</Anchor>,
+    <Anchor href={`/projects/${report.project.slug}`} key="proj" size="sm">
       {report.project.name}
     </Anchor>,
     <Text size="sm" key="title" truncate>{report.title}</Text>,
@@ -171,14 +170,15 @@ export default async function ReportPage({
               {report.traces.map((trace) => {
                 const displayName = trace.testName.split("/").pop() || trace.testName;
                 return (
-                  <Anchor
+                  <Link
                     key={trace.id}
-                    component={Link}
                     href={`/traces/${trace.id}`}
-                    underline="never"
-                    px="md"
-                    py="sm"
-                    style={{ borderBottom: "1px solid var(--mantine-color-gray-2)", display: "block" }}
+                    style={{
+                      textDecoration: "none",
+                      display: "block",
+                      padding: "var(--mantine-spacing-sm) var(--mantine-spacing-md)",
+                      borderBottom: "1px solid var(--mantine-color-gray-2)",
+                    }}
                   >
                     <Group justify="space-between" wrap="nowrap">
                       <div style={{ minWidth: 0 }}>
@@ -191,7 +191,7 @@ export default async function ReportPage({
                         {(trace.sizeBytes / 1024).toFixed(0)} KB
                       </Text>
                     </Group>
-                  </Anchor>
+                  </Link>
                 );
               })}
             </Stack>

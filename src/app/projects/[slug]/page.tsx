@@ -83,7 +83,7 @@ export default async function ProjectPage({
   const { reports, projectName } = await getProjectReports(slug);
 
   const breadcrumbItems = [
-    <Anchor component={Link} href="/" key="dash" size="sm">Dashboard</Anchor>,
+    <Anchor href="/" key="dash" size="sm">Dashboard</Anchor>,
     <Text size="sm" key="proj">{projectName}</Text>,
   ];
 
@@ -107,50 +107,48 @@ export default async function ProjectPage({
         ) : (
           <Stack gap="sm">
             {reports.map((report) => (
-              <Card
+              <Link
                 key={report.id}
-                shadow="xs"
-                radius="md"
-                padding="md"
-                component={Link}
                 href={`/reports/${report.id}`}
                 style={{ textDecoration: "none", color: "inherit" }}
               >
-                <Group justify="space-between" align="flex-start" wrap="wrap" gap="sm">
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <Text fw={500} truncate>{report.title}</Text>
-                    <Group gap="sm" mt="xs">
-                      {report.branch && (
-                        <Code style={{ fontSize: "var(--mantine-font-size-xs)" }}>{report.branch}</Code>
-                      )}
-                      {report.commitSha && (
-                        <Code style={{ fontSize: "var(--mantine-font-size-xs)" }}>{report.commitSha.slice(0, 8)}</Code>
+                <Card shadow="xs" radius="md" padding="md">
+                  <Group justify="space-between" align="flex-start" wrap="wrap" gap="sm">
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <Text fw={500} truncate>{report.title}</Text>
+                      <Group gap="sm" mt="xs">
+                        {report.branch && (
+                          <Code style={{ fontSize: "var(--mantine-font-size-xs)" }}>{report.branch}</Code>
+                        )}
+                        {report.commitSha && (
+                          <Code style={{ fontSize: "var(--mantine-font-size-xs)" }}>{report.commitSha.slice(0, 8)}</Code>
+                        )}
+                        <Text size="xs" c="dimmed">
+                          {new Date(report.createdAt).toLocaleString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </Text>
+                      </Group>
+                    </div>
+                    <Group gap="sm" style={{ flexShrink: 0 }}>
+                      <Badge color="green" variant="light" size="sm">
+                        {report.passed} passed
+                      </Badge>
+                      {report.failed > 0 && (
+                        <Badge color="red" variant="light" size="sm">
+                          {report.failed} failed
+                        </Badge>
                       )}
                       <Text size="xs" c="dimmed">
-                        {new Date(report.createdAt).toLocaleString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {formatDuration(report.durationMs)}
                       </Text>
                     </Group>
-                  </div>
-                  <Group gap="sm" style={{ flexShrink: 0 }}>
-                    <Badge color="green" variant="light" size="sm">
-                      {report.passed} passed
-                    </Badge>
-                    {report.failed > 0 && (
-                      <Badge color="red" variant="light" size="sm">
-                        {report.failed} failed
-                      </Badge>
-                    )}
-                    <Text size="xs" c="dimmed">
-                      {formatDuration(report.durationMs)}
-                    </Text>
                   </Group>
-                </Group>
-              </Card>
+                </Card>
+              </Link>
             ))}
           </Stack>
         )}

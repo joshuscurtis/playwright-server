@@ -140,12 +140,12 @@ reporter: [
                   {reports.map((report) => (
                     <Table.Tr key={report.id}>
                       <Table.Td>
-                        <Anchor component={Link} href={`/reports/${report.id}`} fw={500} size="sm">
+                        <Anchor href={`/reports/${report.id}`} fw={500} size="sm">
                           {report.title}
                         </Anchor>
                       </Table.Td>
                       <Table.Td>
-                        <Anchor component={Link} href={`/projects/${report.project.slug}`} c="dimmed" size="sm">
+                        <Anchor href={`/projects/${report.project.slug}`} c="dimmed" size="sm">
                           {report.project.name}
                         </Anchor>
                       </Table.Td>
@@ -181,41 +181,39 @@ reporter: [
             {/* Mobile card list */}
             <Stack gap="sm" hiddenFrom="md">
               {reports.map((report) => (
-                <Card
+                <Link
                   key={report.id}
-                  shadow="xs"
-                  radius="md"
-                  padding="md"
-                  component={Link}
                   href={`/reports/${report.id}`}
                   style={{ textDecoration: "none", color: "inherit" }}
                 >
-                  <Group justify="space-between" align="flex-start" wrap="nowrap" gap="sm">
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <Text size="sm" fw={500} c="blue" truncate>
-                        {report.title}
+                  <Card shadow="xs" radius="md" padding="md">
+                    <Group justify="space-between" align="flex-start" wrap="nowrap" gap="sm">
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <Text size="sm" fw={500} c="blue" truncate>
+                          {report.title}
+                        </Text>
+                        <Text size="xs" c="dimmed" mt={2}>
+                          {report.project.name}
+                        </Text>
+                      </div>
+                      {statusBadge(report.passed, report.failed, report.totalTests)}
+                    </Group>
+                    <Group gap="md" mt="sm">
+                      <Text size="xs" c="dimmed">
+                        <Text span c="green" fw={500}>{report.passed}</Text>
+                        {report.failed > 0 && (
+                          <Text span c="red" fw={500}> / {report.failed} fail</Text>
+                        )}
+                        {report.skipped > 0 && (
+                          <Text span c="dimmed"> / {report.skipped} skip</Text>
+                        )}
                       </Text>
-                      <Text size="xs" c="dimmed" mt={2}>
-                        {report.project.name}
-                      </Text>
-                    </div>
-                    {statusBadge(report.passed, report.failed, report.totalTests)}
-                  </Group>
-                  <Group gap="md" mt="sm">
-                    <Text size="xs" c="dimmed">
-                      <Text span c="green" fw={500}>{report.passed}</Text>
-                      {report.failed > 0 && (
-                        <Text span c="red" fw={500}> / {report.failed} fail</Text>
-                      )}
-                      {report.skipped > 0 && (
-                        <Text span c="dimmed"> / {report.skipped} skip</Text>
-                      )}
-                    </Text>
-                    <Text size="xs" c="dimmed">{formatDuration(report.durationMs)}</Text>
-                    {report.branch && <Code style={{ fontSize: "var(--mantine-font-size-xs)" }}>{report.branch}</Code>}
-                    <Text size="xs" c="dimmed" ml="auto">{formatDate(report.createdAt)}</Text>
-                  </Group>
-                </Card>
+                      <Text size="xs" c="dimmed">{formatDuration(report.durationMs)}</Text>
+                      {report.branch && <Code style={{ fontSize: "var(--mantine-font-size-xs)" }}>{report.branch}</Code>}
+                      <Text size="xs" c="dimmed" ml="auto">{formatDate(report.createdAt)}</Text>
+                    </Group>
+                  </Card>
+                </Link>
               ))}
             </Stack>
           </>
