@@ -13,6 +13,7 @@ import {
   Anchor,
   Card,
 } from "@mantine/core";
+import { DashboardCharts } from "@/app/components/DashboardCharts";
 
 export const dynamic = "force-dynamic";
 
@@ -148,8 +149,20 @@ reporter: [
           </Paper>
         ) : (
           <>
+            {/* Analytics Charts */}
+            <DashboardCharts />
+
             {/* Desktop table */}
             <Paper shadow="xs" radius="md" visibleFrom="md" style={{ overflow: "hidden" }}>
+              <div
+                style={{
+                  padding: "var(--mantine-spacing-md)",
+                  borderBottom: "1px solid var(--mantine-color-gray-3)",
+                  backgroundColor: "var(--mantine-color-gray-0)",
+                }}
+              >
+                <Text fw={500}>Recent Reports</Text>
+              </div>
               <table style={tableStyles.table}>
                 <thead>
                   <tr>

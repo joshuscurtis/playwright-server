@@ -122,6 +122,25 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Insert individual test results
+    for (const tr of ingestResult.testResults) {
+      await db.insert(schema.testResults).values({
+        id: generateId("tst"),
+        reportId: ingestResult.reportId,
+        projectId: project.id,
+        name: tr.name,
+        fullName: tr.fullName,
+        suiteName: tr.suiteName,
+        fileName: tr.fileName,
+        status: tr.status,
+        durationMs: tr.durationMs,
+        retries: tr.retries,
+        errorMessage: tr.errorMessage,
+        errorStack: tr.errorStack,
+        tags: tr.tags.length > 0 ? tr.tags : null,
+      });
+    }
+
     return NextResponse.json({
       id: ingestResult.reportId,
       projectId: project.id,
@@ -130,6 +149,7 @@ export async function POST(request: NextRequest) {
       url: `/reports/${ingestResult.reportId}`,
       totalFiles: ingestResult.files.length,
       traces: ingestResult.traces.length,
+      testResults: ingestResult.testResults.length,
       summary: ingestResult.resultSummary,
     });
   } catch (error) {

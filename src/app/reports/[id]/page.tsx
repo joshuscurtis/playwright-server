@@ -12,7 +12,9 @@ import {
   Code,
   Group,
   Stack,
+  Badge,
 } from "@mantine/core";
+import { TestResultsTable } from "@/app/components/TestResultsTable";
 
 interface ReportDetail {
   id: string;
@@ -31,6 +33,20 @@ interface ReportDetail {
   buildUrl: string | null;
   createdAt: Date;
   traces: { id: string; testName: string; testFile: string; sizeBytes: number }[];
+  testResults: {
+    id: string;
+    name: string;
+    fullName: string;
+    suiteName: string | null;
+    fileName: string | null;
+    status: string;
+    durationMs: number;
+    retries: number;
+    errorMessage: string | null;
+    errorStack: string | null;
+    tags: string[] | null;
+    projectId: string;
+  }[];
 }
 
 async function getReport(id: string): Promise<ReportDetail | null> {
@@ -38,7 +54,7 @@ async function getReport(id: string): Promise<ReportDetail | null> {
     const db = getDb();
     const report = await db.query.reports.findFirst({
       where: eq(schema.reports.id, id),
-      with: { project: true, traces: true },
+      with: { project: true, traces: true, testResults: true },
     });
     if (!report) return null;
     return {
@@ -62,6 +78,20 @@ async function getReport(id: string): Promise<ReportDetail | null> {
         testName: t.testName,
         testFile: t.testFile,
         sizeBytes: t.sizeBytes,
+      })),
+      testResults: (report.testResults || []).map((t: any) => ({
+        id: t.id,
+        name: t.name,
+        fullName: t.fullName,
+        suiteName: t.suiteName,
+        fileName: t.fileName,
+        status: t.status,
+        durationMs: t.durationMs,
+        retries: t.retries,
+        errorMessage: t.errorMessage,
+        errorStack: t.errorStack,
+        tags: t.tags,
+        projectId: t.projectId,
       })),
     };
   } catch (error) {
@@ -142,6 +172,17 @@ export default async function ReportPage({
       </Paper>
 
       <Container size="xl" py="lg">
+        {/* Test Results Table */}
+        {report.testResults.length > 0 && (
+          <div style={{ marginBottom: "var(--mantine-spacing-lg)" }}>
+            <TestResultsTable
+              testResults={report.testResults}
+              projectId={report.project.id}
+            />
+          </div>
+        )}
+
+        {/* HTML Report */}
         <Paper shadow="xs" radius="md" mb="lg" style={{ overflow: "hidden" }}>
           <Group
             px="md"
@@ -157,6 +198,7 @@ export default async function ReportPage({
           />
         </Paper>
 
+        {/* Traces */}
         {report.traces.length > 0 && (
           <Paper shadow="xs" radius="md" style={{ overflow: "hidden" }}>
             <Group

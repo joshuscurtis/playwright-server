@@ -80,9 +80,56 @@ export const traces = pgTable(
   (table) => [index("traces_report_id_idx").on(table.reportId)]
 );
 
+export const testResults = pgTable(
+  "test_results",
+  {
+    id: text("id").primaryKey(),
+    reportId: text("report_id")
+      .notNull()
+      .references(() => reports.id, { onDelete: "cascade" }),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+
+    // Test identification
+    name: text("name").notNull(),
+    fullName: text("full_name").notNull(),
+    suiteName: text("suite_name"),
+    fileName: text("file_name"),
+
+    // Result
+    status: text("status").notNull(), // passed, failed, skipped, flaky
+    durationMs: integer("duration_ms").notNull().default(0),
+    retries: integer("retries").notNull().default(0),
+
+    // Error info
+    errorMessage: text("error_message"),
+    errorStack: text("error_stack"),
+
+    // Categorization
+    category: text("category"), // product_defect, test_defect, etc.
+    severity: text("severity"), // blocker, critical, normal, minor, trivial
+
+    // Extra data
+    tags: jsonb("tags").$type<string[]>(),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>(),
+
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index("test_results_report_id_idx").on(table.reportId),
+    index("test_results_project_id_idx").on(table.projectId),
+    index("test_results_full_name_idx").on(table.fullName),
+    index("test_results_status_idx").on(table.status),
+  ]
+);
+
 // Relations
 export const projectsRelations = relations(projects, ({ many }) => ({
   reports: many(reports),
+  testResults: many(testResults),
 }));
 
 export const reportsRelations = relations(reports, ({ one, many }) => ({
@@ -91,11 +138,23 @@ export const reportsRelations = relations(reports, ({ one, many }) => ({
     references: [projects.id],
   }),
   traces: many(traces),
+  testResults: many(testResults),
 }));
 
 export const tracesRelations = relations(traces, ({ one }) => ({
   report: one(reports, {
     fields: [traces.reportId],
     references: [reports.id],
+  }),
+}));
+
+export const testResultsRelations = relations(testResults, ({ one }) => ({
+  report: one(reports, {
+    fields: [testResults.reportId],
+    references: [reports.id],
+  }),
+  project: one(projects, {
+    fields: [testResults.projectId],
+    references: [projects.id],
   }),
 }));

@@ -11,6 +11,7 @@ export interface IngestResult {
   files: string[];
   traces: TraceMeta[];
   resultSummary: ResultSummary | null;
+  testResults: TestResultData[];
 }
 
 export interface TraceMeta {
@@ -28,10 +29,23 @@ export interface ResultSummary {
   durationMs: number;
 }
 
+export interface TestResultData {
+  name: string;
+  fullName: string;
+  suiteName: string | null;
+  fileName: string | null;
+  status: "passed" | "failed" | "skipped" | "flaky";
+  durationMs: number;
+  retries: number;
+  errorMessage: string | null;
+  errorStack: string | null;
+  tags: string[];
+}
+
 /**
  * Ingest a Playwright report zip file:
  * 1. Extract to temp dir
- * 2. Parse result summary from report data if available
+ * 2. Parse result summary and individual test results from report data
  * 3. Upload all files to storage
  * 4. Identify trace files
  */
@@ -73,10 +87,11 @@ export async function ingestReport(
       }
     }
 
-    // Try to parse result summary
-    const resultSummary = await parseResultSummary(extractDir);
+    // Try to parse result summary and individual test results
+    const { summary: resultSummary, testResults } =
+      await parseReportData(extractDir);
 
-    return { reportId, storagePath, files, traces, resultSummary };
+    return { reportId, storagePath, files, traces, resultSummary, testResults };
   } finally {
     await fs.rm(tmpDir, { recursive: true, force: true });
   }
@@ -100,42 +115,47 @@ async function walkDir(
   }
 }
 
+interface ParsedReport {
+  summary: ResultSummary | null;
+  testResults: TestResultData[];
+}
+
 /**
- * Try to parse Playwright's report.json or result data.
- * The HTML reporter includes a JSON payload with test stats.
+ * Parse Playwright report data from extracted directory.
+ * Tries report.json (JSON reporter) first, then falls back to HTML reporter data.
  */
-async function parseResultSummary(
-  extractDir: string
-): Promise<ResultSummary | null> {
-  // Playwright HTML reporter stores data in report.json or app.js
-  // Check for common patterns
-  const possiblePaths = [
-    "report.json",
-    "data/report.json",
-  ];
+async function parseReportData(extractDir: string): Promise<ParsedReport> {
+  const possiblePaths = ["report.json", "data/report.json"];
 
   for (const p of possiblePaths) {
     try {
       const data = await fs.readFile(path.join(extractDir, p), "utf-8");
       const json = JSON.parse(data);
-      return extractSummaryFromJson(json);
+      const summary = extractSummaryFromJson(json);
+      const testResults = extractTestResults(json);
+      if (testResults.length > 0) {
+        return { summary, testResults };
+      }
     } catch {
       continue;
     }
   }
 
-  return null;
+  return { summary: null, testResults: [] };
 }
 
 function extractSummaryFromJson(json: unknown): ResultSummary | null {
   if (!json || typeof json !== "object") return null;
   const obj = json as Record<string, unknown>;
 
-  // Playwright JSON reporter format
   if (obj.stats && typeof obj.stats === "object") {
     const stats = obj.stats as Record<string, unknown>;
     return {
-      totalTests: (stats.expected as number ?? 0) + (stats.unexpected as number ?? 0) + (stats.skipped as number ?? 0) + (stats.flaky as number ?? 0),
+      totalTests:
+        ((stats.expected as number) ?? 0) +
+        ((stats.unexpected as number) ?? 0) +
+        ((stats.skipped as number) ?? 0) +
+        ((stats.flaky as number) ?? 0),
       passed: (stats.expected as number) ?? 0,
       failed: (stats.unexpected as number) ?? 0,
       skipped: (stats.skipped as number) ?? 0,
@@ -145,4 +165,131 @@ function extractSummaryFromJson(json: unknown): ResultSummary | null {
   }
 
   return null;
+}
+
+/**
+ * Extract individual test results from Playwright JSON report.
+ * Playwright JSON format: { suites: [{ title, file, suites, specs }] }
+ * Each spec has: { title, ok, tests: [{ expectedStatus, results: [{ status, duration, error }] }] }
+ */
+function extractTestResults(json: unknown): TestResultData[] {
+  if (!json || typeof json !== "object") return [];
+  const obj = json as Record<string, unknown>;
+  if (!Array.isArray(obj.suites)) return [];
+
+  const results: TestResultData[] = [];
+  for (const suite of obj.suites) {
+    extractFromSuite(suite, [], results);
+  }
+  return results;
+}
+
+function extractFromSuite(
+  suite: any,
+  parentSuites: string[],
+  results: TestResultData[]
+): void {
+  if (!suite || typeof suite !== "object") return;
+
+  const suitePath = [...parentSuites];
+  if (suite.title) suitePath.push(suite.title);
+
+  // Process specs in this suite
+  if (Array.isArray(suite.specs)) {
+    for (const spec of suite.specs) {
+      extractFromSpec(spec, suitePath, suite.file || null, results);
+    }
+  }
+
+  // Recurse into nested suites
+  if (Array.isArray(suite.suites)) {
+    for (const child of suite.suites) {
+      extractFromSuite(child, suitePath, results);
+    }
+  }
+}
+
+function extractFromSpec(
+  spec: any,
+  suitePath: string[],
+  fileName: string | null,
+  results: TestResultData[]
+): void {
+  if (!spec || typeof spec !== "object") return;
+  if (!Array.isArray(spec.tests)) return;
+
+  for (const test of spec.tests) {
+    if (!test || !Array.isArray(test.results) || test.results.length === 0)
+      continue;
+
+    const testResults = test.results;
+    const lastResult = testResults[testResults.length - 1];
+
+    // Determine final status
+    let status: TestResultData["status"];
+    const retries = testResults.length - 1;
+
+    if (lastResult.status === "skipped") {
+      status = "skipped";
+    } else if (retries > 0 && lastResult.status === "passed") {
+      status = "flaky";
+    } else if (
+      lastResult.status === "passed" ||
+      lastResult.status === "expected"
+    ) {
+      status = "passed";
+    } else {
+      status = "failed";
+    }
+
+    // Sum duration across all retries
+    const durationMs = testResults.reduce(
+      (sum: number, r: any) => sum + (r.duration || 0),
+      0
+    );
+
+    // Extract error from the last failure
+    let errorMessage: string | null = null;
+    let errorStack: string | null = null;
+    const failedResult = testResults.find(
+      (r: any) =>
+        r.status === "failed" ||
+        r.status === "timedOut" ||
+        r.status === "unexpected"
+    );
+    if (failedResult?.error) {
+      errorMessage = failedResult.error.message || null;
+      errorStack = failedResult.error.stack || null;
+    }
+
+    // Extract tags from annotations
+    const tags: string[] = [];
+    if (Array.isArray(spec.tags)) {
+      tags.push(...spec.tags);
+    }
+    if (Array.isArray(test.annotations)) {
+      for (const ann of test.annotations) {
+        if (ann.type && ann.type !== "fixme" && ann.type !== "skip") {
+          tags.push(ann.type);
+        }
+      }
+    }
+
+    const suiteName =
+      suitePath.length > 1 ? suitePath.slice(1).join(" > ") : null;
+    const fullName = [...suitePath, spec.title].join(" > ");
+
+    results.push({
+      name: spec.title || "Unknown test",
+      fullName,
+      suiteName,
+      fileName,
+      status,
+      durationMs,
+      retries,
+      errorMessage,
+      errorStack,
+      tags,
+    });
+  }
 }
