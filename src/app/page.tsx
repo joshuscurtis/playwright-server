@@ -5,7 +5,6 @@ import {
   Container,
   Title,
   Text,
-  Table,
   Badge,
   Code,
   Paper,
@@ -89,6 +88,33 @@ function statusBadge(passed: number, failed: number, total: number) {
   return <Badge color="gray" variant="light" size="sm">{total} tests</Badge>;
 }
 
+const tableStyles = {
+  table: {
+    width: "100%",
+    borderCollapse: "collapse" as const,
+    fontSize: "var(--mantine-font-size-sm)",
+  },
+  th: {
+    padding: "var(--mantine-spacing-xs) var(--mantine-spacing-md)",
+    textAlign: "left" as const,
+    fontWeight: 500,
+    fontSize: "var(--mantine-font-size-xs)",
+    color: "var(--mantine-color-dimmed)",
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.05em",
+    borderBottom: "1px solid var(--mantine-color-gray-3)",
+    backgroundColor: "var(--mantine-color-gray-0)",
+  },
+  td: {
+    padding: "var(--mantine-spacing-sm) var(--mantine-spacing-md)",
+    borderBottom: "1px solid var(--mantine-color-gray-2)",
+    whiteSpace: "nowrap" as const,
+  },
+  tr: {
+    cursor: "default",
+  },
+};
+
 export default async function DashboardPage() {
   const reports = await getReports();
 
@@ -124,35 +150,35 @@ reporter: [
           <>
             {/* Desktop table */}
             <Paper shadow="xs" radius="md" visibleFrom="md" style={{ overflow: "hidden" }}>
-              <Table striped highlightOnHover>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Report</Table.Th>
-                    <Table.Th>Project</Table.Th>
-                    <Table.Th>Status</Table.Th>
-                    <Table.Th>Tests</Table.Th>
-                    <Table.Th>Duration</Table.Th>
-                    <Table.Th>Branch</Table.Th>
-                    <Table.Th>Date</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
+              <table style={tableStyles.table}>
+                <thead>
+                  <tr>
+                    <th style={tableStyles.th}>Report</th>
+                    <th style={tableStyles.th}>Project</th>
+                    <th style={tableStyles.th}>Status</th>
+                    <th style={tableStyles.th}>Tests</th>
+                    <th style={tableStyles.th}>Duration</th>
+                    <th style={tableStyles.th}>Branch</th>
+                    <th style={tableStyles.th}>Date</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {reports.map((report) => (
-                    <Table.Tr key={report.id}>
-                      <Table.Td>
+                    <tr key={report.id} style={tableStyles.tr}>
+                      <td style={tableStyles.td}>
                         <Anchor href={`/reports/${report.id}`} fw={500} size="sm">
                           {report.title}
                         </Anchor>
-                      </Table.Td>
-                      <Table.Td>
+                      </td>
+                      <td style={tableStyles.td}>
                         <Anchor href={`/projects/${report.project.slug}`} c="dimmed" size="sm">
                           {report.project.name}
                         </Anchor>
-                      </Table.Td>
-                      <Table.Td>
+                      </td>
+                      <td style={tableStyles.td}>
                         {statusBadge(report.passed, report.failed, report.totalTests)}
-                      </Table.Td>
-                      <Table.Td>
+                      </td>
+                      <td style={tableStyles.td}>
                         <Text size="sm">
                           <Text span c="green" fw={500}>{report.passed}</Text>
                           {report.failed > 0 && (
@@ -162,20 +188,20 @@ reporter: [
                             <Text span c="dimmed"> / {report.skipped} skip</Text>
                           )}
                         </Text>
-                      </Table.Td>
-                      <Table.Td>
+                      </td>
+                      <td style={tableStyles.td}>
                         <Text size="sm" c="dimmed">{formatDuration(report.durationMs)}</Text>
-                      </Table.Td>
-                      <Table.Td>
+                      </td>
+                      <td style={tableStyles.td}>
                         {report.branch && <Code>{report.branch}</Code>}
-                      </Table.Td>
-                      <Table.Td>
+                      </td>
+                      <td style={tableStyles.td}>
                         <Text size="sm" c="dimmed">{formatDate(report.createdAt)}</Text>
-                      </Table.Td>
-                    </Table.Tr>
+                      </td>
+                    </tr>
                   ))}
-                </Table.Tbody>
-              </Table>
+                </tbody>
+              </table>
             </Paper>
 
             {/* Mobile card list */}
