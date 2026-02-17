@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getDb, schema } from "@/lib/db";
+import { getStorage } from "@/lib/storage";
 import { eq } from "drizzle-orm";
 import {
   Container,
@@ -19,6 +20,7 @@ interface ReportDetail {
   id: string;
   title: string;
   project: { id: string; name: string; slug: string };
+  storagePath: string;
   totalTests: number;
   passed: number;
   failed: number;
@@ -60,6 +62,7 @@ async function getReport(id: string): Promise<ReportDetail | null> {
       id: report.id,
       title: report.title,
       project: { id: report.project.id, name: report.project.name, slug: report.project.slug },
+      storagePath: report.storagePath,
       totalTests: report.totalTests,
       passed: report.passed,
       failed: report.failed,
@@ -112,6 +115,22 @@ export default async function ReportPage({
 }) {
   const { id } = await params;
   const report = await getReport(id);
+
+  // Check if the HTML report is a real Playwright HTML report (has JS/CSS assets)
+  let hasRichHtmlReport = false;
+  if (report) {
+    try {
+      const storage = getStorage();
+      const files = await storage.list(report.storagePath);
+      // Real Playwright HTML reports have JS bundles, CSS, app/ directory, etc.
+      // Minimal/synthetic reports only have index.html + report.json
+      hasRichHtmlReport = files.some(
+        (f) => f.endsWith(".js") || f.endsWith(".css") || f.includes("/app/")
+      );
+    } catch {
+      // If storage check fails, don't show iframe
+    }
+  }
 
   if (!report) {
     return (
@@ -204,17 +223,19 @@ export default async function ReportPage({
           </div>
         )}
 
-        {/* HTML Report */}
-        <Paper shadow="xs" radius="md" mb="lg" style={{ overflow: "hidden", background: "white" }}>
-          <div className="section-header">
-            <Text fw={600} size="sm">HTML Report</Text>
-          </div>
-          <iframe
-            src={`/api/reports/${report.id}/files/index.html`}
-            style={{ width: "100%", border: "none", minHeight: "50vh", height: "70vh" }}
-            title="Playwright HTML Report"
-          />
-        </Paper>
+        {/* HTML Report - only show when a real Playwright HTML report was uploaded */}
+        {hasRichHtmlReport && (
+          <Paper shadow="xs" radius="md" mb="lg" style={{ overflow: "hidden", background: "white" }}>
+            <div className="section-header">
+              <Text fw={600} size="sm">HTML Report</Text>
+            </div>
+            <iframe
+              src={`/api/reports/${report.id}/files/index.html`}
+              style={{ width: "100%", border: "none", minHeight: "50vh", height: "70vh" }}
+              title="Playwright HTML Report"
+            />
+          </Paper>
+        )}
 
         {/* Traces */}
         {report.traces.length > 0 && (
