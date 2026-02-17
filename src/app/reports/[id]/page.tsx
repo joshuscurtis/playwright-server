@@ -170,15 +170,17 @@ export default async function ReportPage({
               </h2>
             </div>
             <ul className="divide-y divide-gray-200">
-              {report.traces.map((trace) => (
+              {report.traces.map((trace) => {
+                const displayName = trace.testName.split("/").pop() || trace.testName;
+                return (
                 <li key={trace.id} className="px-4 py-3 hover:bg-gray-50">
                   <Link
-                    href={`/traces/${report.id}/${encodeURIComponent(trace.testName)}`}
+                    href={`/traces/${trace.id}`}
                     className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1"
                   >
                     <div className="min-w-0">
                       <span className="text-blue-600 hover:text-blue-800 font-medium text-sm truncate block">
-                        {trace.testName}
+                        {displayName}
                       </span>
                       <span className="text-gray-400 text-xs">
                         {trace.testFile}
@@ -189,7 +191,8 @@ export default async function ReportPage({
                     </span>
                   </Link>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </div>
         )}
